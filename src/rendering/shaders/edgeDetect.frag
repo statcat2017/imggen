@@ -2,7 +2,6 @@
 precision mediump float;
 in vec2 vTexCoord;
 uniform sampler2D uTexture;
-uniform vec2 uTexelSize;
 uniform float uEdgeThreshold;
 uniform float uEdgeStrength;
 out vec4 fragColor;

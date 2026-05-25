@@ -2,8 +2,6 @@
 precision mediump float;
 in vec2 vTexCoord;
 uniform sampler2D uTexture;
-uniform vec2 uTexelSize;
-uniform float uSmoothing;
 out vec4 fragColor;
 
 void main() {

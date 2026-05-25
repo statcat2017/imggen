@@ -162,8 +162,10 @@ export class WebGLRenderer implements Renderer {
   }
 
   async render(request: RenderRequest): Promise<RenderResult> {
-    const { source, sourceId: _sourceId, settings } = request;
-    void _sourceId;
+    const { source, sourceId, settings } = request;
+    // TODO: Add per-source pass caching (keyed by sourceId + settings hash)
+    // to skip full pipeline re-run on zoom/pan-only frames
+    void sourceId;
 
     const scale = Math.min(
       1,
@@ -176,10 +178,7 @@ export class WebGLRenderer implements Renderer {
       this.resize(w, h);
     }
 
-    gl: {
-      const gl = this.gl;
-      gl.viewport(0, 0, w, h);
-    }
+    this.gl.viewport(0, 0, w, h);
     this.uploadSource(source);
     this.runPipeline(settings);
 
@@ -245,9 +244,7 @@ export class WebGLRenderer implements Renderer {
     if (smoothPasses > 0) {
       for (let i = 0; i < smoothPasses; i++) {
         const target = i % 2 === 0 ? this.fboA! : this.fboB!;
-        this.runPass(this.smoothProgram, [{ name: "uTexture", texture: currentTex, unit: 0 }], target.fbo, {
-          uTexelSize: texelSize,
-        });
+        this.runPass(this.smoothProgram, [{ name: "uTexture", texture: currentTex, unit: 0 }], target.fbo, {});
         currentTex = target.tex;
       }
     }
@@ -282,12 +279,14 @@ export class WebGLRenderer implements Renderer {
       [{ name: "uTexture", texture: posterizedTex, unit: 0 }],
       edgeTarget.fbo,
       {
-        uTexelSize: texelSize,
         uEdgeThreshold: settings.edgeThreshold,
         uEdgeStrength: settings.edgeStrength,
       },
     );
     const edgeTex = edgeTarget.tex;
+
+    // Dilation passes (computed in JS to match Canvas2D rounding)
+    const dilatePasses = Math.max(0, Math.min(Math.round(settings.edgeThickness / 2), 4));
 
     // Composite → default framebuffer (drawing buffer)
     this.runPass(
@@ -300,7 +299,7 @@ export class WebGLRenderer implements Renderer {
       {
         uLineColour: hexToRgb(settings.lineColour),
         uTexelSize: texelSize,
-        uEdgeThickness: settings.edgeThickness,
+        uDilatePasses: dilatePasses,
       },
     );
 

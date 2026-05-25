@@ -45,6 +45,7 @@ void main() {
 
     rgb = (rgb - 0.5) * uContrast + 0.5;
     rgb += uShadowBias;
+    rgb = clamp(rgb, 0.0, 1.0);
 
     if (abs(uSaturation - 1.0) > 0.001) {
         vec3 hsl = rgbToHsl(rgb);
