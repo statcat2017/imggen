@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { RenderController } from "@/rendering/RenderController";
-import { useFilterStore } from "@/store/filterStore";
 import { useImageStore } from "@/store/imageStore";
+import { useRenderController } from "@/hooks/useRenderController";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 5;
@@ -28,10 +27,8 @@ function calcFitZoom(
 
 export function PreviewStage() {
   const source = useImageStore((s) => s.source);
-  const settings = useFilterStore((s) => s.settings);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const controllerRef = useRef<RenderController>(new RenderController());
   const zoomRef = useRef(1);
   const panXRef = useRef(0);
   const panYRef = useRef(0);
@@ -45,19 +42,11 @@ export function PreviewStage() {
   const touchStartZoom = useRef(0);
   const touchCenter = useRef({ x: 0, y: 0 });
 
-  useEffect(() => {
-    return () => controllerRef.current.destroy();
-  }, []);
-
-  const render = useCallback(() => {
-    const canvas = canvasRef.current;
-    const img = useImageStore.getState().source;
-    const currentSettings = useFilterStore.getState().settings;
-    if (!canvas || !img) return;
-    void controllerRef.current.renderPreview(
-      img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current, currentSettings, img.id,
-    );
-  }, []);
+  const getViewTransform = useCallback(
+    () => ({ zoom: zoomRef.current, panX: panXRef.current, panY: panYRef.current }),
+    [],
+  );
+  const { scheduleRender } = useRenderController(canvasRef, getViewTransform);
 
   const updateDisplayZoom = useCallback(() => {
     setDisplayZoom(Math.round(zoomRef.current * 100));
@@ -76,13 +65,7 @@ export function PreviewStage() {
     panXRef.current = 0;
     panYRef.current = 0;
     updateDisplayZoom();
-    render();
-  }, [source, render, updateDisplayZoom]);
-
-  useEffect(() => {
-    render();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: settings trigger is needed even though render() reads from store internally
-  }, [render, settings]);
+  }, [source, updateDisplayZoom]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -97,11 +80,11 @@ export function PreviewStage() {
         );
         fitZoomRef.current = fit;
       }
-      render();
+      scheduleRender();
     });
     observer.observe(container);
     return () => observer.disconnect();
-  }, [source, render]);
+  }, [source, scheduleRender]);
 
   useEffect(() => {
     function handleWheel(e: WheelEvent) {
@@ -120,14 +103,14 @@ export function PreviewStage() {
       panXRef.current = (mx - cx) * (1 - ratio) + panXRef.current * ratio;
       panYRef.current = (my - cy) * (1 - ratio) + panYRef.current * ratio;
       zoomRef.current = newZoom;
-      render();
+      scheduleRender();
       updateDisplayZoom();
     }
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", handleWheel);
-  }, [render, updateDisplayZoom]);
+  }, [scheduleRender, updateDisplayZoom]);
 
   useEffect(() => {
     function handleGlobalMouseUp() {
@@ -149,7 +132,7 @@ export function PreviewStage() {
     if (!isDragging.current) return;
     panXRef.current = panStart.current.x + (e.clientX - dragStart.current.x);
     panYRef.current = panStart.current.y + (e.clientY - dragStart.current.y);
-    render();
+    scheduleRender();
   }
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -187,12 +170,12 @@ export function PreviewStage() {
       panXRef.current = (mx - cx) * (1 - zoomRatio) + panXRef.current * zoomRatio;
       panYRef.current = (my - cy) * (1 - zoomRatio) + panYRef.current * zoomRatio;
       zoomRef.current = newZoom;
-      render();
+      scheduleRender();
       updateDisplayZoom();
     } else if (e.touches.length === 1) {
       panXRef.current = panStart.current.x + (e.touches[0].clientX - dragStart.current.x);
       panYRef.current = panStart.current.y + (e.touches[0].clientY - dragStart.current.y);
-      render();
+      scheduleRender();
     }
   }
 
@@ -209,13 +192,13 @@ export function PreviewStage() {
 
   function zoomIn() {
     zoomRef.current = clamp(zoomRef.current * 1.25, MIN_ZOOM, MAX_ZOOM);
-    render();
+    scheduleRender();
     updateDisplayZoom();
   }
 
   function zoomOut() {
     zoomRef.current = clamp(zoomRef.current / 1.25, MIN_ZOOM, MAX_ZOOM);
-    render();
+    scheduleRender();
     updateDisplayZoom();
   }
 
@@ -223,7 +206,7 @@ export function PreviewStage() {
     zoomRef.current = fitZoomRef.current;
     panXRef.current = 0;
     panYRef.current = 0;
-    render();
+    scheduleRender();
     updateDisplayZoom();
     bumpViewVersion();
   }

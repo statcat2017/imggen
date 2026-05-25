@@ -1,15 +1,35 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Select } from "@/components/ui/Select";
+import type { SelectOption } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
 import { builtInPresets } from "@/presets/builtInPresets";
-import { useFilterStore } from "@/store/filterStore";
+import { useFilterStore, defaultFilterSettings } from "@/store/filterStore";
+import type { FilterSettings } from "@/types";
 
 type SectionName = "look" | "lines" | "cleanup" | "export";
 
-const presetOptions = builtInPresets.map((p) => ({ value: p.id, label: p.name }));
+function getPresetLabel(settings: { presetId: string | null } & Record<string, unknown>): string {
+  if (settings.presetId === null) return "Custom";
+  const preset = builtInPresets.find((p) => p.id === settings.presetId);
+  if (!preset) return "Custom";
+  return preset.name;
+}
+
+function getPresetDefault<K extends keyof FilterSettings>(
+  key: K,
+  presetId: string | null,
+): FilterSettings[K] {
+  if (presetId) {
+    const preset = builtInPresets.find((p) => p.id === presetId);
+    if (preset) {
+      return preset.settings[key];
+    }
+  }
+  return defaultFilterSettings[key];
+}
 
 const formatOptions = [
   { value: "png", label: "PNG" },
@@ -56,8 +76,11 @@ export function FilterControlsPanel() {
   const settings = useFilterStore((s) => s.settings);
   const update = useFilterStore((s) => s.update);
   const applyPreset = useFilterStore((s) => s.applyPreset);
+  const reset = useFilterStore((s) => s.reset);
 
-  const selectedPreset = builtInPresets.find((p) => p.id === settings.presetId) ?? builtInPresets[0];
+  const presetOptions: SelectOption[] = [
+    ...builtInPresets.map((p) => ({ value: p.id, label: p.name })),
+  ];
 
   function togglePanel() {
     setPanelCollapsed((prev) => !prev);
@@ -74,6 +97,14 @@ export function FilterControlsPanel() {
       return next;
     });
   }
+
+  const handlePresetChange = useCallback(
+    (value: string) => {
+      if (value === "") return;
+      applyPreset(value);
+    },
+    [applyPreset],
+  );
 
   return (
     <div
@@ -109,10 +140,13 @@ export function FilterControlsPanel() {
             <div className="flex flex-col gap-2 px-4 pb-3">
               <Select
                 label="Preset"
-                value={settings.presetId}
+                value={settings.presetId ?? ""}
                 options={presetOptions}
-                onChange={applyPreset}
+                onChange={handlePresetChange}
               />
+              <div className="text-ctp-subtext0 text-xs">
+                {getPresetLabel(settings)}
+              </div>
               <Slider
                 label="Colour Levels"
                 value={settings.colourLevels}
@@ -120,7 +154,7 @@ export function FilterControlsPanel() {
                 max={16}
                 step={1}
                 onChange={(v) => update({ colourLevels: v })}
-                onReset={() => update({ colourLevels: selectedPreset.settings.colourLevels })}
+                onReset={() => update({ colourLevels: getPresetDefault("colourLevels", settings.presetId) })}
               />
               <Slider
                 label="Contrast"
@@ -129,7 +163,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={(v) => update({ contrast: v })}
-                onReset={() => update({ contrast: selectedPreset.settings.contrast })}
+                onReset={() => update({ contrast: getPresetDefault("contrast", settings.presetId) })}
               />
               <Slider
                 label="Saturation"
@@ -138,7 +172,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={(v) => update({ saturation: v })}
-                onReset={() => update({ saturation: selectedPreset.settings.saturation })}
+                onReset={() => update({ saturation: getPresetDefault("saturation", settings.presetId) })}
               />
               <Slider
                 label="Shadow Bias"
@@ -147,7 +181,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ shadowBias: v })}
-                onReset={() => update({ shadowBias: selectedPreset.settings.shadowBias })}
+                onReset={() => update({ shadowBias: getPresetDefault("shadowBias", settings.presetId) })}
               />
             </div>
           )}
@@ -168,7 +202,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ edgeStrength: v })}
-                onReset={() => update({ edgeStrength: selectedPreset.settings.edgeStrength })}
+                onReset={() => update({ edgeStrength: getPresetDefault("edgeStrength", settings.presetId) })}
               />
               <Slider
                 label="Edge Thickness"
@@ -178,7 +212,7 @@ export function FilterControlsPanel() {
                 step={0.5}
                 suffix="px"
                 onChange={(v) => update({ edgeThickness: v })}
-                onReset={() => update({ edgeThickness: selectedPreset.settings.edgeThickness })}
+                onReset={() => update({ edgeThickness: getPresetDefault("edgeThickness", settings.presetId) })}
               />
               <Slider
                 label="Edge Threshold"
@@ -187,7 +221,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ edgeThreshold: v })}
-                onReset={() => update({ edgeThreshold: selectedPreset.settings.edgeThreshold })}
+                onReset={() => update({ edgeThreshold: getPresetDefault("edgeThreshold", settings.presetId) })}
               />
               <ColorPicker
                 label="Line Colour"
@@ -213,7 +247,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ smoothing: v })}
-                onReset={() => update({ smoothing: selectedPreset.settings.smoothing })}
+                onReset={() => update({ smoothing: getPresetDefault("smoothing", settings.presetId) })}
               />
               <Toggle
                 label="Background Preservation"
@@ -244,9 +278,14 @@ export function FilterControlsPanel() {
                 options={resolutionOptions}
                 onChange={setResolution}
               />
-              <Button variant="primary" size="md" onClick={() => {}}>
-                Export Image
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" size="md" onClick={reset}>
+                  Reset
+                </Button>
+                <Button variant="primary" size="md" onClick={() => {}}>
+                  Export Image
+                </Button>
+              </div>
             </div>
           )}
         </div>
