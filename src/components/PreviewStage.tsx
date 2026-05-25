@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RenderController } from "@/rendering/RenderController";
+import { useFilterStore } from "@/store/filterStore";
 import { useImageStore } from "@/store/imageStore";
 
 const MIN_ZOOM = 0.25;
@@ -45,9 +46,12 @@ export function PreviewStage() {
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const img = useImageStore.getState().source;
+    const settings = useFilterStore.getState().settings;
     if (!canvas || !img) return;
     const controller = new RenderController();
-    controller.renderPreview(img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current);
+    void controller.renderPreview(
+      img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current, settings,
+    );
   }, []);
 
   const updateDisplayZoom = useCallback(() => {
