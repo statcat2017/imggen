@@ -44,6 +44,7 @@ export class RenderController {
   private cachedSettingsHash = "";
   private cachedBitmap: ImageBitmap | null = null;
   private renderer: Renderer;
+  private fellBack = false;
 
   constructor(renderer?: Renderer) {
     this.renderer = renderer ?? new Canvas2DRenderer();
@@ -75,7 +76,21 @@ export class RenderController {
       const settingsHash = JSON.stringify(settings);
 
       if (sourceId !== this.cachedSourceId || settingsHash !== this.cachedSettingsHash) {
-        const result = await this.renderer.render({ source: image, sourceId, settings });
+        let result: { bitmap: ImageBitmap };
+        try {
+          result = await this.renderer.render({ source: image, sourceId, settings });
+        } catch (err) {
+          if (!this.fellBack) {
+            console.warn("[RenderController] renderer failed, falling back to Canvas2D:", err);
+            this.renderer.destroy();
+            this.renderer = new Canvas2DRenderer();
+            this.fellBack = true;
+            this.cachedSourceId = "";
+            this.cachedSettingsHash = "";
+            return;
+          }
+          throw err;
+        }
         if (globalRenderId !== currentRid) {
           result.bitmap.close();
           return;
