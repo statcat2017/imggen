@@ -45,6 +45,10 @@ export function PreviewStage() {
   const touchStartZoom = useRef(0);
   const touchCenter = useRef({ x: 0, y: 0 });
 
+  useEffect(() => {
+    return () => controllerRef.current.destroy();
+  }, []);
+
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const img = useImageStore.getState().source;
