@@ -1,11 +1,11 @@
-import type { FilterSettings } from "@/types";
 import { smooth, colorCorrect, posterize, edgeDetect, composite } from "@/rendering/pipeline";
+import type { Renderer, RenderRequest, RenderResult } from "@/rendering/Renderer";
 
 const MAX_PREVIEW_DIMENSION = 1920;
 
-export type PassCacheKey = string;
+type PassCacheKey = string;
 
-export type PassCache = {
+type PassCache = {
   sourceId: string;
   sourceWidth: number;
   sourceHeight: number;
@@ -45,13 +45,12 @@ function hashEdgeMask(
   return `${sourceId}-edge-${smoothing}-${colourLevels}-${contrast}-${saturation}-${shadowBias}-${edgeThreshold}-${edgeStrength}`;
 }
 
-export class Canvas2DRenderer {
-  async render(
-    source: ImageBitmap,
-    settings: FilterSettings,
-    passCache: PassCache | null,
-    sourceId: string,
-  ): Promise<{ bitmap: ImageBitmap; cache: PassCache }> {
+export class Canvas2DRenderer implements Renderer {
+  private passCache: PassCache | null = null;
+
+  async render(request: RenderRequest): Promise<RenderResult> {
+    const { source, sourceId, settings } = request;
+
     const scale = Math.min(
       1,
       MAX_PREVIEW_DIMENSION / Math.max(source.width, source.height),
@@ -67,19 +66,19 @@ export class Canvas2DRenderer {
     const sourceImageData = ctx.getImageData(0, 0, targetW, targetH);
 
     const sameSource =
-      passCache &&
-      passCache.sourceId === sourceId &&
-      passCache.sourceWidth === source.width &&
-      passCache.sourceHeight === source.height;
+      this.passCache &&
+      this.passCache.sourceId === sourceId &&
+      this.passCache.sourceWidth === source.width &&
+      this.passCache.sourceHeight === source.height;
 
     const smoothedKey = hashSmoothed(sourceId, settings.smoothing);
     let smoothed: ImageData;
     if (
       sameSource &&
-      passCache?.smoothedKey === smoothedKey &&
-      passCache.smoothedData
+      this.passCache?.smoothedKey === smoothedKey &&
+      this.passCache.smoothedData
     ) {
-      smoothed = passCache.smoothedData;
+      smoothed = this.passCache.smoothedData;
     } else {
       smoothed = smooth(sourceImageData, settings.smoothing);
     }
@@ -95,10 +94,10 @@ export class Canvas2DRenderer {
     let posterized: ImageData;
     if (
       sameSource &&
-      passCache?.posterizedKey === posterizedKey &&
-      passCache.posterizedData
+      this.passCache?.posterizedKey === posterizedKey &&
+      this.passCache.posterizedData
     ) {
-      posterized = passCache.posterizedData;
+      posterized = this.passCache.posterizedData;
     } else {
       const corrected = colorCorrect(
         smoothed,
@@ -122,10 +121,10 @@ export class Canvas2DRenderer {
     let edgeMask: ImageData;
     if (
       sameSource &&
-      passCache?.edgeMaskKey === edgeMaskKey &&
-      passCache.edgeMaskData
+      this.passCache?.edgeMaskKey === edgeMaskKey &&
+      this.passCache.edgeMaskData
     ) {
-      edgeMask = passCache.edgeMaskData;
+      edgeMask = this.passCache.edgeMaskData;
     } else {
       edgeMask = edgeDetect(posterized, settings.edgeThreshold, settings.edgeStrength);
     }
@@ -135,7 +134,7 @@ export class Canvas2DRenderer {
 
     ctx.putImageData(result, 0, 0);
 
-    const cache: PassCache = {
+    this.passCache = {
       sourceId,
       sourceWidth: source.width,
       sourceHeight: source.height,
@@ -147,6 +146,10 @@ export class Canvas2DRenderer {
       edgeMaskData: edgeMask,
     };
 
-    return { bitmap: canvas.transferToImageBitmap(), cache };
+    return { bitmap: canvas.transferToImageBitmap() };
+  }
+
+  destroy() {
+    this.passCache = null;
   }
 }

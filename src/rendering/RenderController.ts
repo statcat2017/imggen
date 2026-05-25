@@ -1,5 +1,6 @@
 import type { FilterSettings } from "@/types";
-import { Canvas2DRenderer, type PassCache } from "@/rendering/Canvas2DRenderer";
+import type { Renderer } from "@/rendering/Renderer";
+import { Canvas2DRenderer } from "@/rendering/Canvas2DRenderer";
 
 let globalRenderId = 0;
 
@@ -42,8 +43,11 @@ export class RenderController {
   private cachedSourceId = "";
   private cachedSettingsHash = "";
   private cachedBitmap: ImageBitmap | null = null;
-  private renderer = new Canvas2DRenderer();
-  private passCache: PassCache | null = null;
+  private renderer: Renderer;
+
+  constructor(renderer?: Renderer) {
+    this.renderer = renderer ?? new Canvas2DRenderer();
+  }
 
   async renderPreview(
     image: ImageBitmap,
@@ -71,14 +75,13 @@ export class RenderController {
       const settingsHash = JSON.stringify(settings);
 
       if (sourceId !== this.cachedSourceId || settingsHash !== this.cachedSettingsHash) {
-        const result = await this.renderer.render(image, settings, this.passCache, sourceId);
+        const result = await this.renderer.render({ source: image, sourceId, settings });
         if (globalRenderId !== currentRid) {
           result.bitmap.close();
           return;
         }
 
         if (this.cachedBitmap) this.cachedBitmap.close();
-        this.passCache = result.cache;
         this.cachedSourceId = sourceId;
         this.cachedSettingsHash = settingsHash;
         this.cachedBitmap = result.bitmap;
@@ -107,6 +110,6 @@ export class RenderController {
       this.cachedBitmap.close();
       this.cachedBitmap = null;
     }
-    this.passCache = null;
+    this.renderer.destroy();
   }
 }
