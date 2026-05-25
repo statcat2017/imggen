@@ -24,7 +24,11 @@ function loadPersistedSettings(): FilterSettings {
     if (raw) {
       const loaded = { ...defaultFilterSettings, ...JSON.parse(raw) };
       const matchingPreset = builtInPresets.find((p) => settingsMatchPreset(loaded, p.id));
-      return { ...loaded, presetId: matchingPreset?.id ?? null };
+      return {
+        ...loaded,
+        presetId: matchingPreset?.id ?? null,
+        basePresetId: loaded.basePresetId ?? matchingPreset?.id ?? null,
+      };
     }
   } catch {
     // corrupted data — fall back to defaults
