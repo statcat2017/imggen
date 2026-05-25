@@ -34,7 +34,6 @@ export function PreviewStage() {
   const panYRef = useRef(0);
   const fitZoomRef = useRef(1);
   const [displayZoom, setDisplayZoom] = useState(100);
-  const [interactionTick, setInteractionTick] = useState(0);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const panStart = useRef({ x: 0, y: 0 });
@@ -184,12 +183,10 @@ export function PreviewStage() {
 
   function handleMouseUp() {
     isDragging.current = false;
-    setInteractionTick((t) => t + 1);
   }
 
   function handleTouchEnd() {
     isDragging.current = false;
-    setInteractionTick((t) => t + 1);
     updateDisplayZoom();
   }
 
@@ -209,14 +206,13 @@ export function PreviewStage() {
     zoomRef.current = fitZoomRef.current;
     panXRef.current = 0;
     panYRef.current = 0;
-    setInteractionTick(0);
     render();
     updateDisplayZoom();
   }
 
   const isZoomed = Math.abs(zoomRef.current - fitZoomRef.current) > 0.01;
   const isPanned = Math.abs(panXRef.current) > 0.5 || Math.abs(panYRef.current) > 0.5;
-  const showReset = interactionTick > 0 && (isZoomed || isPanned);
+  const showReset = isZoomed || isPanned;
 
   if (!source) return null;
 
@@ -236,6 +232,7 @@ export function PreviewStage() {
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-ctp-base/80 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-ctp-subtext0 select-none">
         <button
           type="button"
+          aria-label="Zoom out"
           onClick={zoomOut}
           className="w-6 h-6 flex items-center justify-center rounded hover:bg-ctp-surface0 cursor-pointer"
         >
@@ -244,6 +241,7 @@ export function PreviewStage() {
         <span className="min-w-[4rem] text-center">{displayZoom}%</span>
         <button
           type="button"
+          aria-label="Zoom in"
           onClick={zoomIn}
           className="w-6 h-6 flex items-center justify-center rounded hover:bg-ctp-surface0 cursor-pointer"
         >
@@ -252,6 +250,7 @@ export function PreviewStage() {
         {showReset && (
           <button
             type="button"
+            aria-label="Reset zoom"
             onClick={resetZoom}
             className="ml-2 px-2 py-1 rounded hover:bg-ctp-surface0 cursor-pointer text-ctp-mauve"
           >

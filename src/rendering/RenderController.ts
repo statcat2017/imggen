@@ -35,13 +35,17 @@ export class RenderController {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     drawCheckerboard(ctx);
 
     ctx.save();
-    ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY);
+    ctx.translate(w / 2 + panX, h / 2 + panY);
     ctx.scale(zoom, zoom);
     ctx.drawImage(image, -image.width / 2, -image.height / 2);
     ctx.restore();

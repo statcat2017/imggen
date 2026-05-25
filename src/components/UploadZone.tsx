@@ -10,7 +10,7 @@ export function UploadZone({ onFileDrop, disabled = false, children }: UploadZon
   const [isDragOver, setIsDragOver] = useState(false);
   const dragDepthRef = useRef(0);
 
-  const handleDragOver = useCallback(
+  const handleDragEnter = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       if (!disabled) {
@@ -20,6 +20,10 @@ export function UploadZone({ onFileDrop, disabled = false, children }: UploadZon
     },
     [disabled],
   );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
 
   const handleDragLeave = useCallback(() => {
     dragDepthRef.current--;
@@ -67,6 +71,7 @@ export function UploadZone({ onFileDrop, disabled = false, children }: UploadZon
     // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop surface, keyboard not applicable
     <div
       className="h-full relative"
+      onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
