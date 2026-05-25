@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RenderController } from "@/rendering/RenderController";
 import { useImageStore } from "@/store/imageStore";
 
@@ -34,6 +34,7 @@ export function PreviewStage() {
   const panYRef = useRef(0);
   const fitZoomRef = useRef(1);
   const [displayZoom, setDisplayZoom] = useState(100);
+  const [, bumpViewVersion] = useReducer((v: number) => v + 1, 0);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const panStart = useRef({ x: 0, y: 0 });
@@ -99,8 +100,8 @@ export function PreviewStage() {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
+      const cx = canvas.clientWidth / 2;
+      const cy = canvas.clientHeight / 2;
       const ratio = newZoom / zoomRef.current;
       panXRef.current = (mx - cx) * (1 - ratio) + panXRef.current * ratio;
       panYRef.current = (my - cy) * (1 - ratio) + panYRef.current * ratio;
@@ -166,8 +167,8 @@ export function PreviewStage() {
       const rect = canvas.getBoundingClientRect();
       const mx = touchCenter.current.x - rect.left;
       const my = touchCenter.current.y - rect.top;
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
+      const cx = canvas.clientWidth / 2;
+      const cy = canvas.clientHeight / 2;
       const zoomRatio = newZoom / zoomRef.current;
       panXRef.current = (mx - cx) * (1 - zoomRatio) + panXRef.current * zoomRatio;
       panYRef.current = (my - cy) * (1 - zoomRatio) + panYRef.current * zoomRatio;
@@ -183,10 +184,12 @@ export function PreviewStage() {
 
   function handleMouseUp() {
     isDragging.current = false;
+    bumpViewVersion();
   }
 
   function handleTouchEnd() {
     isDragging.current = false;
+    bumpViewVersion();
     updateDisplayZoom();
   }
 
