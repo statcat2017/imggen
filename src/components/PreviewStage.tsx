@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RenderController } from "@/rendering/RenderController";
+import { useFilterStore } from "@/store/filterStore";
 import { useImageStore } from "@/store/imageStore";
 
 const MIN_ZOOM = 0.25;
@@ -27,8 +28,10 @@ function calcFitZoom(
 
 export function PreviewStage() {
   const source = useImageStore((s) => s.source);
+  const settings = useFilterStore((s) => s.settings);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const controllerRef = useRef<RenderController>(new RenderController());
   const zoomRef = useRef(1);
   const panXRef = useRef(0);
   const panYRef = useRef(0);
@@ -42,12 +45,18 @@ export function PreviewStage() {
   const touchStartZoom = useRef(0);
   const touchCenter = useRef({ x: 0, y: 0 });
 
+  useEffect(() => {
+    return () => controllerRef.current.destroy();
+  }, []);
+
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const img = useImageStore.getState().source;
+    const currentSettings = useFilterStore.getState().settings;
     if (!canvas || !img) return;
-    const controller = new RenderController();
-    controller.renderPreview(img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current);
+    void controllerRef.current.renderPreview(
+      img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current, currentSettings, img.id,
+    );
   }, []);
 
   const updateDisplayZoom = useCallback(() => {
@@ -69,6 +78,11 @@ export function PreviewStage() {
     updateDisplayZoom();
     render();
   }, [source, render, updateDisplayZoom]);
+
+  useEffect(() => {
+    render();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: settings trigger is needed even though render() reads from store internally
+  }, [render, settings]);
 
   useEffect(() => {
     const container = containerRef.current;

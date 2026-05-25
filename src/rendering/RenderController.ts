@@ -1,6 +1,7 @@
 import type { FilterSettings } from "@/types";
+import { Canvas2DRenderer } from "@/rendering/Canvas2DRenderer";
 
-let requestId = 0;
+let globalRenderId = 0;
 
 function drawCheckerboard(ctx: CanvasRenderingContext2D) {
   const size = 8;
@@ -21,8 +22,26 @@ function drawCheckerboard(ctx: CanvasRenderingContext2D) {
   }
 }
 
+function drawBitmap(
+  ctx: CanvasRenderingContext2D,
+  bitmap: ImageBitmap,
+  w: number,
+  h: number,
+  zoom: number,
+  panX: number,
+  panY: number,
+) {
+  ctx.save();
+  ctx.translate(w / 2 + panX, h / 2 + panY);
+  ctx.scale(zoom, zoom);
+  ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+  ctx.restore();
+}
+
 export class RenderController {
-  private rid = ++requestId;
+  private cachedSourceId = "";
+  private cachedSettingsHash = "";
+  private cachedBitmap: ImageBitmap | null = null;
 
   async renderPreview(
     image: ImageBitmap,
@@ -30,8 +49,10 @@ export class RenderController {
     zoom: number,
     panX: number,
     panY: number,
+    settings: FilterSettings | undefined,
+    sourceId: string,
   ) {
-    void this.rid;
+    const currentRid = ++globalRenderId;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -44,11 +65,27 @@ export class RenderController {
 
     drawCheckerboard(ctx);
 
-    ctx.save();
-    ctx.translate(w / 2 + panX, h / 2 + panY);
-    ctx.scale(zoom, zoom);
-    ctx.drawImage(image, -image.width / 2, -image.height / 2);
-    ctx.restore();
+    if (settings) {
+      const settingsHash = JSON.stringify(settings);
+
+      if (sourceId !== this.cachedSourceId || settingsHash !== this.cachedSettingsHash) {
+        const renderer = new Canvas2DRenderer();
+        const processed = await renderer.render(image, settings);
+        if (globalRenderId !== currentRid) {
+          processed.close();
+          return;
+        }
+
+        if (this.cachedBitmap) this.cachedBitmap.close();
+        this.cachedSourceId = sourceId;
+        this.cachedSettingsHash = settingsHash;
+        this.cachedBitmap = processed;
+      }
+
+      drawBitmap(ctx, this.cachedBitmap!, w, h, zoom, panX, panY);
+    } else {
+      drawBitmap(ctx, image, w, h, zoom, panX, panY);
+    }
   }
 
   async renderExport(
@@ -61,5 +98,12 @@ export class RenderController {
     void settings;
     void targetWidth;
     void targetHeight;
+  }
+
+  destroy() {
+    if (this.cachedBitmap) {
+      this.cachedBitmap.close();
+      this.cachedBitmap = null;
+    }
   }
 }

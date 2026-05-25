@@ -5,6 +5,7 @@ import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
 import { builtInPresets } from "@/presets/builtInPresets";
+import { useFilterStore } from "@/store/filterStore";
 
 type SectionName = "look" | "lines" | "cleanup" | "export";
 
@@ -49,6 +50,14 @@ function SectionHeader({
 export function FilterControlsPanel() {
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [sectionCollapsed, setSectionCollapsed] = useState<Set<SectionName>>(new Set());
+  const [format, setFormat] = useState("png");
+  const [resolution, setResolution] = useState("original");
+
+  const settings = useFilterStore((s) => s.settings);
+  const update = useFilterStore((s) => s.update);
+  const applyPreset = useFilterStore((s) => s.applyPreset);
+
+  const selectedPreset = builtInPresets.find((p) => p.id === settings.presetId) ?? builtInPresets[0];
 
   function togglePanel() {
     setPanelCollapsed((prev) => !prev);
@@ -64,38 +73,6 @@ export function FilterControlsPanel() {
       }
       return next;
     });
-  }
-
-  const [preset, setPreset] = useState("adventure-background");
-  const [colourLevels, setColourLevels] = useState(6);
-  const [contrast, setContrast] = useState(1.1);
-  const [saturation, setSaturation] = useState(1.15);
-  const [shadowBias, setShadowBias] = useState(0.0);
-  const [edgeStrength, setEdgeStrength] = useState(0.65);
-  const [edgeThickness, setEdgeThickness] = useState(1.5);
-  const [edgeThreshold, setEdgeThreshold] = useState(0.25);
-  const [lineColour, setLineColour] = useState("#111111");
-  const [smoothing, setSmoothing] = useState(0.35);
-  const [preserveBackground, setPreserveBackground] = useState(true);
-  const [transparentOutput, setTransparentOutput] = useState(true);
-  const [format, setFormat] = useState("png");
-  const [resolution, setResolution] = useState("original");
-  const selectedPreset = builtInPresets.find((p) => p.id === preset) ?? builtInPresets[0];
-
-  function handlePresetChange(id: string) {
-    const p = builtInPresets.find((preset) => preset.id === id) ?? builtInPresets[0];
-    setPreset(id);
-    setColourLevels(p.settings.colourLevels);
-    setContrast(p.settings.contrast);
-    setSaturation(p.settings.saturation);
-    setShadowBias(p.settings.shadowBias);
-    setEdgeStrength(p.settings.edgeStrength);
-    setEdgeThickness(p.settings.edgeThickness);
-    setEdgeThreshold(p.settings.edgeThreshold);
-    setLineColour(p.settings.lineColour);
-    setSmoothing(p.settings.smoothing);
-    setPreserveBackground(p.settings.preserveBackground);
-    setTransparentOutput(p.settings.preserveTransparency);
   }
 
   return (
@@ -132,45 +109,45 @@ export function FilterControlsPanel() {
             <div className="flex flex-col gap-2 px-4 pb-3">
               <Select
                 label="Preset"
-                value={preset}
+                value={settings.presetId}
                 options={presetOptions}
-                onChange={handlePresetChange}
+                onChange={applyPreset}
               />
               <Slider
                 label="Colour Levels"
-                value={colourLevels}
+                value={settings.colourLevels}
                 min={2}
                 max={16}
                 step={1}
-                onChange={setColourLevels}
-                onReset={() => setColourLevels(selectedPreset.settings.colourLevels)}
+                onChange={(v) => update({ colourLevels: v })}
+                onReset={() => update({ colourLevels: selectedPreset.settings.colourLevels })}
               />
               <Slider
                 label="Contrast"
-                value={contrast}
+                value={settings.contrast}
                 min={0.5}
                 max={2}
                 step={0.01}
-                onChange={setContrast}
-                onReset={() => setContrast(selectedPreset.settings.contrast)}
+                onChange={(v) => update({ contrast: v })}
+                onReset={() => update({ contrast: selectedPreset.settings.contrast })}
               />
               <Slider
                 label="Saturation"
-                value={saturation}
+                value={settings.saturation}
                 min={0}
                 max={2}
                 step={0.01}
-                onChange={setSaturation}
-                onReset={() => setSaturation(selectedPreset.settings.saturation)}
+                onChange={(v) => update({ saturation: v })}
+                onReset={() => update({ saturation: selectedPreset.settings.saturation })}
               />
               <Slider
                 label="Shadow Bias"
-                value={shadowBias}
+                value={settings.shadowBias}
                 min={-1}
                 max={1}
                 step={0.01}
-                onChange={setShadowBias}
-                onReset={() => setShadowBias(selectedPreset.settings.shadowBias)}
+                onChange={(v) => update({ shadowBias: v })}
+                onReset={() => update({ shadowBias: selectedPreset.settings.shadowBias })}
               />
             </div>
           )}
@@ -186,33 +163,37 @@ export function FilterControlsPanel() {
             <div className="flex flex-col gap-2 px-4 pb-3">
               <Slider
                 label="Edge Strength"
-                value={edgeStrength}
+                value={settings.edgeStrength}
                 min={0}
                 max={1}
                 step={0.01}
-                onChange={setEdgeStrength}
-                onReset={() => setEdgeStrength(selectedPreset.settings.edgeStrength)}
+                onChange={(v) => update({ edgeStrength: v })}
+                onReset={() => update({ edgeStrength: selectedPreset.settings.edgeStrength })}
               />
               <Slider
                 label="Edge Thickness"
-                value={edgeThickness}
+                value={settings.edgeThickness}
                 min={0}
                 max={8}
                 step={0.5}
                 suffix="px"
-                onChange={setEdgeThickness}
-                onReset={() => setEdgeThickness(selectedPreset.settings.edgeThickness)}
+                onChange={(v) => update({ edgeThickness: v })}
+                onReset={() => update({ edgeThickness: selectedPreset.settings.edgeThickness })}
               />
               <Slider
                 label="Edge Threshold"
-                value={edgeThreshold}
+                value={settings.edgeThreshold}
                 min={0}
                 max={1}
                 step={0.01}
-                onChange={setEdgeThreshold}
-                onReset={() => setEdgeThreshold(selectedPreset.settings.edgeThreshold)}
+                onChange={(v) => update({ edgeThreshold: v })}
+                onReset={() => update({ edgeThreshold: selectedPreset.settings.edgeThreshold })}
               />
-              <ColorPicker label="Line Colour" value={lineColour} onChange={setLineColour} />
+              <ColorPicker
+                label="Line Colour"
+                value={settings.lineColour}
+                onChange={(v) => update({ lineColour: v })}
+              />
             </div>
           )}
 
@@ -227,22 +208,22 @@ export function FilterControlsPanel() {
             <div className="flex flex-col gap-2 px-4 pb-3">
               <Slider
                 label="Smoothing"
-                value={smoothing}
+                value={settings.smoothing}
                 min={0}
                 max={1}
                 step={0.01}
-                onChange={setSmoothing}
-                onReset={() => setSmoothing(selectedPreset.settings.smoothing)}
+                onChange={(v) => update({ smoothing: v })}
+                onReset={() => update({ smoothing: selectedPreset.settings.smoothing })}
               />
               <Toggle
                 label="Background Preservation"
-                checked={preserveBackground}
-                onChange={setPreserveBackground}
+                checked={settings.preserveBackground}
+                onChange={(v) => update({ preserveBackground: v })}
               />
               <Toggle
                 label="Transparent Output"
-                checked={transparentOutput}
-                onChange={setTransparentOutput}
+                checked={settings.preserveTransparency}
+                onChange={(v) => update({ preserveTransparency: v })}
               />
             </div>
           )}
