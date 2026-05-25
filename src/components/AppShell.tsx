@@ -1,9 +1,15 @@
+import { EmptyState } from "@/components/EmptyState";
+import { FilterControlsPanel } from "@/components/FilterControlsPanel";
+import { Toolbar } from "@/components/Toolbar";
+
 export function AppShell() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4">
-      <h1 className="text-3xl font-bold tracking-tight">imggen</h1>
-      <p className="text-gray-400">Cell-shaded image filter for adventure game assets</p>
-      <p className="text-sm text-gray-500">Upload a PNG or JPG to get started</p>
+    <div className="h-full flex flex-col bg-ctp-crust">
+      <Toolbar />
+      <main className="flex-1 relative min-h-0">
+        <EmptyState />
+        <FilterControlsPanel />
+      </main>
     </div>
   );
 }
