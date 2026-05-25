@@ -17,8 +17,8 @@ const formatOptions = [
 
 const resolutionOptions = [
   { value: "original", label: "Original" },
-  { value: "2x", label: "2x" },
-  { value: "0.5x", label: "0.5x" },
+  { value: "preview", label: "Preview" },
+  { value: "custom", label: "Custom" },
 ];
 
 function SectionHeader({
@@ -80,6 +80,23 @@ export function FilterControlsPanel() {
   const [transparentOutput, setTransparentOutput] = useState(true);
   const [format, setFormat] = useState("png");
   const [resolution, setResolution] = useState("original");
+  const selectedPreset = builtInPresets.find((p) => p.id === preset) ?? builtInPresets[0];
+
+  function handlePresetChange(id: string) {
+    const p = builtInPresets.find((preset) => preset.id === id) ?? builtInPresets[0];
+    setPreset(id);
+    setColourLevels(p.settings.colourLevels);
+    setContrast(p.settings.contrast);
+    setSaturation(p.settings.saturation);
+    setShadowBias(p.settings.shadowBias);
+    setEdgeStrength(p.settings.edgeStrength);
+    setEdgeThickness(p.settings.edgeThickness);
+    setEdgeThreshold(p.settings.edgeThreshold);
+    setLineColour(p.settings.lineColour);
+    setSmoothing(p.settings.smoothing);
+    setPreserveBackground(p.settings.preserveBackground);
+    setTransparentOutput(p.settings.preserveTransparency);
+  }
 
   return (
     <div
@@ -113,7 +130,12 @@ export function FilterControlsPanel() {
           />
           {!sectionCollapsed.has("look") && (
             <div className="flex flex-col gap-2 px-4 pb-3">
-              <Select label="Preset" value={preset} options={presetOptions} onChange={setPreset} />
+              <Select
+                label="Preset"
+                value={preset}
+                options={presetOptions}
+                onChange={handlePresetChange}
+              />
               <Slider
                 label="Colour Levels"
                 value={colourLevels}
@@ -121,7 +143,7 @@ export function FilterControlsPanel() {
                 max={16}
                 step={1}
                 onChange={setColourLevels}
-                onReset={() => {}}
+                onReset={() => setColourLevels(selectedPreset.settings.colourLevels)}
               />
               <Slider
                 label="Contrast"
@@ -130,7 +152,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={setContrast}
-                onReset={() => {}}
+                onReset={() => setContrast(selectedPreset.settings.contrast)}
               />
               <Slider
                 label="Saturation"
@@ -139,7 +161,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={setSaturation}
-                onReset={() => {}}
+                onReset={() => setSaturation(selectedPreset.settings.saturation)}
               />
               <Slider
                 label="Shadow Bias"
@@ -148,7 +170,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setShadowBias}
-                onReset={() => {}}
+                onReset={() => setShadowBias(selectedPreset.settings.shadowBias)}
               />
             </div>
           )}
@@ -169,7 +191,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setEdgeStrength}
-                onReset={() => {}}
+                onReset={() => setEdgeStrength(selectedPreset.settings.edgeStrength)}
               />
               <Slider
                 label="Edge Thickness"
@@ -179,7 +201,7 @@ export function FilterControlsPanel() {
                 step={0.5}
                 suffix="px"
                 onChange={setEdgeThickness}
-                onReset={() => {}}
+                onReset={() => setEdgeThickness(selectedPreset.settings.edgeThickness)}
               />
               <Slider
                 label="Edge Threshold"
@@ -188,7 +210,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setEdgeThreshold}
-                onReset={() => {}}
+                onReset={() => setEdgeThreshold(selectedPreset.settings.edgeThreshold)}
               />
               <ColorPicker label="Line Colour" value={lineColour} onChange={setLineColour} />
             </div>
@@ -210,7 +232,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setSmoothing}
-                onReset={() => {}}
+                onReset={() => setSmoothing(selectedPreset.settings.smoothing)}
               />
               <Toggle
                 label="Background Preservation"

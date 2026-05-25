@@ -11,10 +11,10 @@ export function Toggle({ label, checked, onChange }: ToggleProps) {
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="sr-only"
+        className="peer sr-only"
       />
       <span
-        className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
+        className={`relative inline-flex h-5 w-10 rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ctp-mauve/50 ${
           checked ? "bg-ctp-green" : "bg-ctp-surface0"
         }`}
       >

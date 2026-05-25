@@ -1,8 +1,4 @@
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
-import { builtInPresets } from "@/presets/builtInPresets";
-
-const presetOptions = builtInPresets.map((p) => ({ value: p.id, label: p.name }));
 
 export function Toolbar() {
   return (
@@ -12,12 +8,6 @@ export function Toolbar() {
         <Button variant="primary" size="sm">
           Upload
         </Button>
-        <Select
-          label="Preset"
-          options={presetOptions}
-          value={builtInPresets[0].id}
-          onChange={() => {}}
-        />
         <Button variant="secondary" size="sm">
           Export
         </Button>
