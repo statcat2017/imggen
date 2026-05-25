@@ -11,10 +11,10 @@ out vec4 fragColor;
 void main() {
     vec4 base = texture(uBaseTexture, vTexCoord);
 
-    int radius = uDilatePasses;
     float maxEdge = 0.0;
-    for (int x = -radius; x <= radius; x++) {
-        for (int y = -radius; y <= radius; y++) {
+    for (int x = -4; x <= 4; x++) {
+        for (int y = -4; y <= 4; y++) {
+            if (abs(x) > uDilatePasses || abs(y) > uDilatePasses) continue;
             vec2 offset = vec2(float(x), float(y)) * uTexelSize;
             float e = texture(uEdgeTexture, vTexCoord + offset).r;
             maxEdge = max(maxEdge, e);

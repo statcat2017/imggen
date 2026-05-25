@@ -123,6 +123,8 @@ export class WebGLRenderer implements Renderer {
   private fboA: FBOResource | null = null;
   private fboB: FBOResource | null = null;
   private fboC: FBOResource | null = null;
+  private scaleCanvas: OffscreenCanvas | null = null;
+  private scaleCtx: OffscreenCanvasRenderingContext2D | null = null;
 
   constructor() {
     this.canvas = new OffscreenCanvas(1, 1);
@@ -163,27 +165,33 @@ export class WebGLRenderer implements Renderer {
 
   async render(request: RenderRequest): Promise<RenderResult> {
     const { source, sourceId, settings } = request;
-    // TODO: Add per-source pass caching (keyed by sourceId + settings hash)
-    // to skip full pipeline re-run on zoom/pan-only frames
+    // Per-source pass caching is not yet implemented — the full GPU pipeline
+    // re-runs on every settings change. Zoom/pan-only frames are still cheap
+    // because RenderController caches the final processed bitmap by source+settings.
     void sourceId;
 
-    const scale = Math.min(
-      1,
-      MAX_PREVIEW_DIMENSION / Math.max(source.width, source.height),
-    );
-    const w = Math.round(source.width * scale);
-    const h = Math.round(source.height * scale);
+    try {
+      const scale = Math.min(
+        1,
+        MAX_PREVIEW_DIMENSION / Math.max(source.width, source.height),
+      );
+      const w = Math.round(source.width * scale);
+      const h = Math.round(source.height * scale);
 
-    if (w !== this.targetW || h !== this.targetH) {
-      this.resize(w, h);
+      if (w !== this.targetW || h !== this.targetH) {
+        this.resize(w, h);
+      }
+
+      this.gl.viewport(0, 0, w, h);
+      this.uploadSource(source);
+      this.runPipeline(settings);
+
+      const bitmap = this.canvas.transferToImageBitmap();
+      return { bitmap };
+    } catch (err) {
+      console.error("[WebGLRenderer] render failed:", err);
+      throw err;
     }
-
-    this.gl.viewport(0, 0, w, h);
-    this.uploadSource(source);
-    this.runPipeline(settings);
-
-    const bitmap = this.canvas.transferToImageBitmap();
-    return { bitmap };
   }
 
   destroy(): void {
@@ -218,12 +226,21 @@ export class WebGLRenderer implements Renderer {
     this.fboA = createFBOResource(gl, w, h);
     this.fboB = createFBOResource(gl, w, h);
     this.fboC = createFBOResource(gl, w, h);
+
+    this.scaleCanvas = new OffscreenCanvas(w, h);
+    this.scaleCtx = this.scaleCanvas.getContext("2d");
   }
 
   private uploadSource(bitmap: ImageBitmap): void {
     const gl = this.gl;
+
+    // Scale source to fit the allocated texture. texSubImage2D requires
+    // the uploaded data dimensions to match the texture, so the raw
+    // ImageBitmap must be downscaled first.
+    this.scaleCtx!.drawImage(bitmap, 0, 0, this.targetW, this.targetH);
+
     gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.scaleCanvas!);
   }
 
   private runPipeline(settings: FilterSettings): void {

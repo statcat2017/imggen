@@ -23,17 +23,18 @@ vec3 rgbToHsl(vec3 rgb) {
     return vec3(h, s, l);
 }
 
+float hue2rgb(float p, float q, float t) {
+    if (t < 0.0) t += 1.0;
+    if (t > 1.0) t -= 1.0;
+    if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
+    if (t < 1.0 / 2.0) return q;
+    if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+    return p;
+}
+
 vec3 hslToRgb(vec3 hsl) {
     float h = hsl.x, s = hsl.y, l = hsl.z;
     if (s == 0.0) return vec3(l);
-    float hue2rgb(float p, float q, float t) {
-        if (t < 0.0) t += 1.0;
-        if (t > 1.0) t -= 1.0;
-        if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
-        if (t < 1.0 / 2.0) return q;
-        if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
-        return p;
-    }
     float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
     float p = 2.0 * l - q;
     return vec3(hue2rgb(p, q, h + 1.0 / 3.0), hue2rgb(p, q, h), hue2rgb(p, q, h - 1.0 / 3.0));
@@ -49,7 +50,7 @@ void main() {
 
     if (abs(uSaturation - 1.0) > 0.001) {
         vec3 hsl = rgbToHsl(rgb);
-        hsl.y *= uSaturation;
+        hsl.y = clamp(hsl.y * uSaturation, 0.0, 1.0);
         rgb = hslToRgb(hsl);
     }
 

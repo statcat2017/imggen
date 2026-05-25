@@ -1,6 +1,6 @@
 #version 300 es
-in vec2 aPosition;
-in vec2 aTexCoord;
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
 out vec2 vTexCoord;
 
 void main() {
