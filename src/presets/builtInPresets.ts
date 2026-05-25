@@ -9,6 +9,7 @@ export const builtInPresets: FilterPreset[] = [
       "Balanced cell-shading for point-and-click backgrounds. Moderate outlines, soft smoothing.",
     settings: {
       presetId: "adventure-background",
+      basePresetId: null,
       colourLevels: 6,
       edgeStrength: 0.65,
       edgeThickness: 1.5,
@@ -30,6 +31,7 @@ export const builtInPresets: FilterPreset[] = [
       "Bold outlines with high contrast and limited colour bands for a graphic novel look.",
     settings: {
       presetId: "comic-ink",
+      basePresetId: null,
       colourLevels: 5,
       edgeStrength: 0.9,
       edgeThickness: 3.0,
@@ -50,6 +52,7 @@ export const builtInPresets: FilterPreset[] = [
     description: "Low outlines, heavier smoothing, and more colour bands for a hand-painted feel.",
     settings: {
       presetId: "soft-painted",
+      basePresetId: null,
       colourLevels: 10,
       edgeStrength: 0.3,
       edgeThickness: 1.0,
@@ -71,6 +74,7 @@ export const builtInPresets: FilterPreset[] = [
       "Strong colour reduction with minimal detail, suitable for low-resolution or retro pixel-art styles.",
     settings: {
       presetId: "pixel-friendly-flat",
+      basePresetId: null,
       colourLevels: 4,
       edgeStrength: 0.7,
       edgeThickness: 1.0,
@@ -91,6 +95,7 @@ export const builtInPresets: FilterPreset[] = [
     description: "Heavy black outlines, strong contrast, desaturated tones, and deep shadows.",
     settings: {
       presetId: "dark-neo-noir",
+      basePresetId: null,
       colourLevels: 6,
       edgeStrength: 1.0,
       edgeThickness: 4.0,

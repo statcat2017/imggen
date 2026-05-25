@@ -13,16 +13,23 @@ export function useRenderController(
   const settings = useFilterStore((s) => s.settings);
   const controllerRef = useRef<RenderController>(new RenderController());
   const rafIdRef = useRef<number | null>(null);
+  const renderTokenRef = useRef(0);
   const [renderStatus, setRenderStatus] = useState<RenderStatus>("idle");
 
   useEffect(() => {
-    return () => controllerRef.current.destroy();
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      controllerRef.current.destroy();
+    };
   }, []);
 
   const scheduleRender = useCallback(() => {
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
     }
+    const token = ++renderTokenRef.current;
     rafIdRef.current = requestAnimationFrame(async () => {
       rafIdRef.current = null;
       const canvas = canvasRef.current;
@@ -40,7 +47,9 @@ export function useRenderController(
         currentSettings,
         currentSource.id,
       );
-      setRenderStatus("idle");
+      if (token === renderTokenRef.current) {
+        setRenderStatus("idle");
+      }
     });
   }, [canvasRef, getViewTransform]);
 

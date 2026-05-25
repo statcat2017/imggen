@@ -68,6 +68,7 @@ export class Canvas2DRenderer {
 
     const sameSource =
       passCache &&
+      passCache.sourceId === sourceId &&
       passCache.sourceWidth === source.width &&
       passCache.sourceHeight === source.height;
 

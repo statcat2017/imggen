@@ -11,19 +11,29 @@ import type { FilterSettings } from "@/types";
 
 type SectionName = "look" | "lines" | "cleanup" | "export";
 
-function getPresetLabel(settings: { presetId: string | null } & Record<string, unknown>): string {
-  if (settings.presetId === null) return "Custom";
-  const preset = builtInPresets.find((p) => p.id === settings.presetId);
-  if (!preset) return "Custom";
-  return preset.name;
+function getPresetLabel(settings: {
+  presetId: string | null;
+  basePresetId: string | null;
+}): string {
+  if (settings.presetId !== null) {
+    const preset = builtInPresets.find((p) => p.id === settings.presetId);
+    if (preset) return preset.name;
+  }
+  if (settings.basePresetId !== null) {
+    const base = builtInPresets.find((p) => p.id === settings.basePresetId);
+    if (base) return `Custom (from ${base.name})`;
+  }
+  return "Custom";
 }
 
 function getPresetDefault<K extends keyof FilterSettings>(
   key: K,
   presetId: string | null,
+  basePresetId: string | null,
 ): FilterSettings[K] {
-  if (presetId) {
-    const preset = builtInPresets.find((p) => p.id === presetId);
+  const id = presetId ?? basePresetId;
+  if (id) {
+    const preset = builtInPresets.find((p) => p.id === id);
     if (preset) {
       return preset.settings[key];
     }
@@ -154,7 +164,7 @@ export function FilterControlsPanel() {
                 max={16}
                 step={1}
                 onChange={(v) => update({ colourLevels: v })}
-                onReset={() => update({ colourLevels: getPresetDefault("colourLevels", settings.presetId) })}
+                onReset={() => update({ colourLevels: getPresetDefault("colourLevels", settings.presetId, settings.basePresetId) })}
               />
               <Slider
                 label="Contrast"
@@ -163,7 +173,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={(v) => update({ contrast: v })}
-                onReset={() => update({ contrast: getPresetDefault("contrast", settings.presetId) })}
+                onReset={() => update({ contrast: getPresetDefault("contrast", settings.presetId, settings.basePresetId) })}
               />
               <Slider
                 label="Saturation"
@@ -172,7 +182,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={(v) => update({ saturation: v })}
-                onReset={() => update({ saturation: getPresetDefault("saturation", settings.presetId) })}
+                onReset={() => update({ saturation: getPresetDefault("saturation", settings.presetId, settings.basePresetId) })}
               />
               <Slider
                 label="Shadow Bias"
@@ -181,7 +191,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ shadowBias: v })}
-                onReset={() => update({ shadowBias: getPresetDefault("shadowBias", settings.presetId) })}
+                onReset={() => update({ shadowBias: getPresetDefault("shadowBias", settings.presetId, settings.basePresetId) })}
               />
             </div>
           )}
@@ -202,7 +212,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ edgeStrength: v })}
-                onReset={() => update({ edgeStrength: getPresetDefault("edgeStrength", settings.presetId) })}
+                onReset={() => update({ edgeStrength: getPresetDefault("edgeStrength", settings.presetId, settings.basePresetId) })}
               />
               <Slider
                 label="Edge Thickness"
@@ -212,7 +222,7 @@ export function FilterControlsPanel() {
                 step={0.5}
                 suffix="px"
                 onChange={(v) => update({ edgeThickness: v })}
-                onReset={() => update({ edgeThickness: getPresetDefault("edgeThickness", settings.presetId) })}
+                onReset={() => update({ edgeThickness: getPresetDefault("edgeThickness", settings.presetId, settings.basePresetId) })}
               />
               <Slider
                 label="Edge Threshold"
@@ -221,7 +231,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ edgeThreshold: v })}
-                onReset={() => update({ edgeThreshold: getPresetDefault("edgeThreshold", settings.presetId) })}
+                onReset={() => update({ edgeThreshold: getPresetDefault("edgeThreshold", settings.presetId, settings.basePresetId) })}
               />
               <ColorPicker
                 label="Line Colour"
@@ -247,7 +257,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={(v) => update({ smoothing: v })}
-                onReset={() => update({ smoothing: getPresetDefault("smoothing", settings.presetId) })}
+                onReset={() => update({ smoothing: getPresetDefault("smoothing", settings.presetId, settings.basePresetId) })}
               />
               <Toggle
                 label="Background Preservation"
