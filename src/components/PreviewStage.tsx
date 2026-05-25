@@ -28,8 +28,10 @@ function calcFitZoom(
 
 export function PreviewStage() {
   const source = useImageStore((s) => s.source);
+  const settings = useFilterStore((s) => s.settings);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const controllerRef = useRef<RenderController>(new RenderController());
   const zoomRef = useRef(1);
   const panXRef = useRef(0);
   const panYRef = useRef(0);
@@ -46,11 +48,10 @@ export function PreviewStage() {
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const img = useImageStore.getState().source;
-    const settings = useFilterStore.getState().settings;
+    const currentSettings = useFilterStore.getState().settings;
     if (!canvas || !img) return;
-    const controller = new RenderController();
-    void controller.renderPreview(
-      img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current, settings,
+    void controllerRef.current.renderPreview(
+      img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current, currentSettings,
     );
   }, []);
 
@@ -73,6 +74,11 @@ export function PreviewStage() {
     updateDisplayZoom();
     render();
   }, [source, render, updateDisplayZoom]);
+
+  useEffect(() => {
+    render();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: settings trigger is needed even though render() reads from store internally
+  }, [render, settings]);
 
   useEffect(() => {
     const container = containerRef.current;

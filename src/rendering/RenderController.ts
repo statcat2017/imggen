@@ -1,7 +1,7 @@
 import type { FilterSettings } from "@/types";
 import { Canvas2DRenderer } from "@/rendering/Canvas2DRenderer";
 
-let requestId = 0;
+let globalRenderId = 0;
 
 function drawCheckerboard(ctx: CanvasRenderingContext2D) {
   const size = 8;
@@ -23,8 +23,6 @@ function drawCheckerboard(ctx: CanvasRenderingContext2D) {
 }
 
 export class RenderController {
-  private rid = ++requestId;
-
   async renderPreview(
     image: ImageBitmap,
     canvas: HTMLCanvasElement,
@@ -33,7 +31,7 @@ export class RenderController {
     panY: number,
     settings?: FilterSettings,
   ) {
-    const currentRid = this.rid;
+    const currentRid = ++globalRenderId;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -49,12 +47,16 @@ export class RenderController {
     if (settings) {
       const renderer = new Canvas2DRenderer();
       const processed = await renderer.render(image, settings);
-      if (this.rid !== currentRid) return;
+      if (globalRenderId !== currentRid) {
+        processed.close();
+        return;
+      }
       ctx.save();
       ctx.translate(w / 2 + panX, h / 2 + panY);
       ctx.scale(zoom, zoom);
       ctx.drawImage(processed, -processed.width / 2, -processed.height / 2);
       ctx.restore();
+      processed.close();
     } else {
       ctx.save();
       ctx.translate(w / 2 + panX, h / 2 + panY);

@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "biome lint src/",
+    "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check ."
   },
