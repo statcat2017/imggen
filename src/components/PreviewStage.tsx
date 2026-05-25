@@ -211,6 +211,7 @@ export function PreviewStage() {
     panYRef.current = 0;
     render();
     updateDisplayZoom();
+    bumpViewVersion();
   }
 
   const isZoomed = Math.abs(zoomRef.current - fitZoomRef.current) > 0.01;
