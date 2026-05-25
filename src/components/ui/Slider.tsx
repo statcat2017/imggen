@@ -23,7 +23,7 @@ export function Slider({
 }: SliderProps) {
   const id = useId();
 
-  const formatted = `${value.toFixed(2)}${suffix ? ` ${suffix}` : ""}`;
+  const formatted = `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(2)}${suffix ? ` ${suffix}` : ""}`;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: container for double-click reset gesture

@@ -30,7 +30,9 @@ export function ColorPicker({ label, value, onChange }: ColorPickerProps) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-ctp-subtext1 text-xs font-medium">{label}</span>
+      <label htmlFor={`${id}-hex`} className="text-ctp-subtext1 text-xs font-medium">
+        {label}
+      </label>
       <div className="flex items-center gap-2">
         <button
           type="button"

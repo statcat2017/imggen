@@ -4,16 +4,11 @@ import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
+import { builtInPresets } from "@/presets/builtInPresets";
 
 type SectionName = "look" | "lines" | "cleanup" | "export";
 
-const presetOptions = [
-  { value: "adventure-background", label: "Adventure Background" },
-  { value: "comic-ink", label: "Comic Ink" },
-  { value: "soft-painted", label: "Soft Painted" },
-  { value: "pixel-friendly-flat", label: "Pixel-Friendly Flat" },
-  { value: "dark-neo-noir", label: "Dark Neo-Noir" },
-];
+const presetOptions = builtInPresets.map((p) => ({ value: p.id, label: p.name }));
 
 const formatOptions = [
   { value: "png", label: "PNG" },
@@ -84,7 +79,7 @@ export function FilterControlsPanel() {
   const [preserveBackground, setPreserveBackground] = useState(true);
   const [transparentOutput, setTransparentOutput] = useState(true);
   const [format, setFormat] = useState("png");
-  const [_resolution, setResolution] = useState("original");
+  const [resolution, setResolution] = useState("original");
 
   return (
     <div
@@ -126,6 +121,7 @@ export function FilterControlsPanel() {
                 max={16}
                 step={1}
                 onChange={setColourLevels}
+                onReset={() => {}}
               />
               <Slider
                 label="Contrast"
@@ -134,6 +130,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={setContrast}
+                onReset={() => {}}
               />
               <Slider
                 label="Saturation"
@@ -142,6 +139,7 @@ export function FilterControlsPanel() {
                 max={2}
                 step={0.01}
                 onChange={setSaturation}
+                onReset={() => {}}
               />
               <Slider
                 label="Shadow Bias"
@@ -150,6 +148,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setShadowBias}
+                onReset={() => {}}
               />
             </div>
           )}
@@ -170,6 +169,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setEdgeStrength}
+                onReset={() => {}}
               />
               <Slider
                 label="Edge Thickness"
@@ -179,6 +179,7 @@ export function FilterControlsPanel() {
                 step={0.5}
                 suffix="px"
                 onChange={setEdgeThickness}
+                onReset={() => {}}
               />
               <Slider
                 label="Edge Threshold"
@@ -187,6 +188,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setEdgeThreshold}
+                onReset={() => {}}
               />
               <ColorPicker label="Line Colour" value={lineColour} onChange={setLineColour} />
             </div>
@@ -208,6 +210,7 @@ export function FilterControlsPanel() {
                 max={1}
                 step={0.01}
                 onChange={setSmoothing}
+                onReset={() => {}}
               />
               <Toggle
                 label="Background Preservation"
@@ -234,7 +237,7 @@ export function FilterControlsPanel() {
               <Select label="Format" value={format} options={formatOptions} onChange={setFormat} />
               <Select
                 label="Resolution"
-                value={_resolution}
+                value={resolution}
                 options={resolutionOptions}
                 onChange={setResolution}
               />
