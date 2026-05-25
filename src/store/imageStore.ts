@@ -11,7 +11,10 @@ export const useImageStore = create<ImageStore>((set) => ({
   source: null,
 
   setSource(image) {
-    set({ source: image });
+    set((state) => {
+      state.source?.bitmap.close();
+      return { source: image };
+    });
   },
 
   clearSource() {
