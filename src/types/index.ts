@@ -1,5 +1,6 @@
 export type FilterSettings = {
-  presetId: string;
+  presetId: string | null;
+  basePresetId: string | null;
   colourLevels: number;
   edgeStrength: number;
   edgeThickness: number;

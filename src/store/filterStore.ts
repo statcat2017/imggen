@@ -4,6 +4,7 @@ import type { FilterSettings } from "@/types";
 
 export const defaultFilterSettings: FilterSettings = {
   presetId: "adventure-background",
+  basePresetId: null,
   colourLevels: 6,
   edgeStrength: 0.65,
   edgeThickness: 1.5,
@@ -20,11 +21,27 @@ export const defaultFilterSettings: FilterSettings = {
 function loadPersistedSettings(): FilterSettings {
   try {
     const raw = localStorage.getItem("imggen-filter-settings");
-    if (raw) return { ...defaultFilterSettings, ...JSON.parse(raw) };
+    if (raw) {
+      const loaded = { ...defaultFilterSettings, ...JSON.parse(raw) };
+      const matchingPreset = builtInPresets.find((p) => settingsMatchPreset(loaded, p.id));
+      return {
+        ...loaded,
+        presetId: matchingPreset?.id ?? null,
+        basePresetId: loaded.basePresetId ?? matchingPreset?.id ?? null,
+      };
+    }
   } catch {
     // corrupted data — fall back to defaults
   }
   return { ...defaultFilterSettings };
+}
+
+function settingsMatchPreset(settings: FilterSettings, presetId: string): boolean {
+  const preset = builtInPresets.find((p) => p.id === presetId);
+  if (!preset) return false;
+  const { presetId: _, basePresetId: __, ...settingsWithoutMeta } = settings;
+  const { presetId: ___, basePresetId: ____, ...presetWithoutMeta } = preset.settings;
+  return JSON.stringify(settingsWithoutMeta) === JSON.stringify(presetWithoutMeta);
 }
 
 type FilterStore = {
@@ -39,21 +56,30 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
 
   update(patch) {
     set((state) => {
-      const next = { ...state.settings, ...patch, presetId: "custom" };
+      const next = { ...state.settings, ...patch };
+      let presetId: string | null = null;
+      for (const preset of builtInPresets) {
+        if (settingsMatchPreset(next, preset.id)) {
+          presetId = preset.id;
+          break;
+        }
+      }
+      const finalSettings = { ...next, presetId, basePresetId: state.settings.basePresetId };
       try {
-        localStorage.setItem("imggen-filter-settings", JSON.stringify(next));
+        localStorage.setItem("imggen-filter-settings", JSON.stringify(finalSettings));
       } catch {
         // ignore
       }
-      return { settings: next };
+      return { settings: finalSettings };
     });
   },
 
   reset() {
-    const preset = builtInPresets.find((p) => p.id === get().settings.presetId);
-    const next = preset
-      ? { ...preset.settings, presetId: preset.id }
-      : { ...defaultFilterSettings };
+    const base = get().settings.basePresetId;
+    const basePreset = base ? builtInPresets.find((p) => p.id === base) : undefined;
+    const next = basePreset
+      ? { ...basePreset.settings, presetId: basePreset.id, basePresetId: basePreset.id }
+      : { ...defaultFilterSettings, basePresetId: null };
     set({ settings: next });
     try {
       localStorage.setItem("imggen-filter-settings", JSON.stringify(next));
@@ -65,7 +91,7 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
   applyPreset(presetId) {
     const preset = builtInPresets.find((p) => p.id === presetId);
     if (!preset) return;
-    const next = { ...preset.settings, presetId };
+    const next = { ...preset.settings, presetId, basePresetId: presetId };
     set({ settings: next });
     try {
       localStorage.setItem("imggen-filter-settings", JSON.stringify(next));
