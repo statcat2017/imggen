@@ -85,11 +85,10 @@ export class RenderController {
             this.renderer.destroy();
             this.renderer = new Canvas2DRenderer();
             this.fellBack = true;
-            this.cachedSourceId = "";
-            this.cachedSettingsHash = "";
-            return;
+            result = await this.renderer.render({ source: image, sourceId, settings });
+          } else {
+            throw err;
           }
-          throw err;
         }
         if (globalRenderId !== currentRid) {
           result.bitmap.close();

@@ -115,9 +115,9 @@ export class WebGLRenderer implements Renderer {
   private edgeDetectProgram: WebGLProgram;
   private compositeProgram: WebGLProgram;
 
-  private vao: WebGLVertexArrayObject;
-  private positionBuf: WebGLBuffer;
-  private texCoordBuf: WebGLBuffer;
+  private vao: WebGLVertexArrayObject | null = null;
+  private positionBuf: WebGLBuffer | null = null;
+  private texCoordBuf: WebGLBuffer | null = null;
 
   private sourceTexture: WebGLTexture | null = null;
   private fboA: FBOResource | null = null;
@@ -125,6 +125,7 @@ export class WebGLRenderer implements Renderer {
   private fboC: FBOResource | null = null;
   private scaleCanvas: OffscreenCanvas | null = null;
   private scaleCtx: OffscreenCanvasRenderingContext2D | null = null;
+  private uniformCache = new Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>();
 
   constructor() {
     this.canvas = new OffscreenCanvas(1, 1);
@@ -135,11 +136,20 @@ export class WebGLRenderer implements Renderer {
     if (!gl) throw new Error("WebGL2 not available");
     this.gl = gl;
 
-    this.smoothProgram = linkProgram(gl, vertexSrc, smoothFrag);
-    this.colorCorrectProgram = linkProgram(gl, vertexSrc, colorCorrectFrag);
-    this.posterizeProgram = linkProgram(gl, vertexSrc, posterizeFrag);
-    this.edgeDetectProgram = linkProgram(gl, vertexSrc, edgeDetectFrag);
-    this.compositeProgram = linkProgram(gl, vertexSrc, compositeFrag);
+    // Compile shaders — clean up partial resources on failure so the
+    // factory can safely catch and fall back to Canvas2D.
+    let programs: WebGLProgram[] = [];
+    try {
+      this.smoothProgram = linkProgram(gl, vertexSrc, smoothFrag);
+      programs.push(this.smoothProgram);
+      this.colorCorrectProgram = linkProgram(gl, vertexSrc, colorCorrectFrag);
+      programs.push(this.colorCorrectProgram);
+      this.posterizeProgram = linkProgram(gl, vertexSrc, posterizeFrag);
+      programs.push(this.posterizeProgram);
+      this.edgeDetectProgram = linkProgram(gl, vertexSrc, edgeDetectFrag);
+      programs.push(this.edgeDetectProgram);
+      this.compositeProgram = linkProgram(gl, vertexSrc, compositeFrag);
+      programs.push(this.compositeProgram);
 
     const vao = gl.createVertexArray();
     if (!vao) throw new Error("Failed to create VAO");
@@ -161,6 +171,13 @@ export class WebGLRenderer implements Renderer {
     gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
 
     gl.bindVertexArray(null);
+    } catch (e) {
+      for (const p of programs) gl.deleteProgram(p);
+      if (this.positionBuf) gl.deleteBuffer(this.positionBuf);
+      if (this.texCoordBuf) gl.deleteBuffer(this.texCoordBuf);
+      if (this.vao) gl.deleteVertexArray(this.vao);
+      throw e;
+    }
   }
 
   async render(request: RenderRequest): Promise<RenderResult> {
@@ -237,7 +254,11 @@ export class WebGLRenderer implements Renderer {
     // Scale source to fit the allocated texture. texSubImage2D requires
     // the uploaded data dimensions to match the texture, so the raw
     // ImageBitmap must be downscaled first.
+    // Clear and use copy compositing to prevent transparent PNG pixel bleed
+    // when a same-size image replaces a previous one.
+    this.scaleCtx!.globalCompositeOperation = "copy";
     this.scaleCtx!.drawImage(bitmap, 0, 0, this.targetW, this.targetH);
+    this.scaleCtx!.globalCompositeOperation = "source-over";
 
     gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.scaleCanvas!);
@@ -323,6 +344,20 @@ export class WebGLRenderer implements Renderer {
     gl.bindVertexArray(null);
   }
 
+  private uniformLocation(program: WebGLProgram, name: string): WebGLUniformLocation | null {
+    let cache = this.uniformCache.get(program);
+    if (!cache) {
+      cache = new Map();
+      this.uniformCache.set(program, cache);
+    }
+    let loc = cache.get(name);
+    if (loc === undefined) {
+      loc = this.gl.getUniformLocation(program, name);
+      cache.set(name, loc);
+    }
+    return loc;
+  }
+
   private runPass(
     program: WebGLProgram,
     inputs: Array<{ name: string; texture: WebGLTexture; unit: number }>,
@@ -335,12 +370,12 @@ export class WebGLRenderer implements Renderer {
     for (const { name, texture, unit } of inputs) {
       gl.activeTexture(gl.TEXTURE0 + unit);
       gl.bindTexture(gl.TEXTURE_2D, texture);
-      const loc = gl.getUniformLocation(program, name);
+      const loc = this.uniformLocation(program, name);
       if (loc !== null) gl.uniform1i(loc, unit);
     }
 
     for (const [key, value] of Object.entries(uniforms)) {
-      const loc = gl.getUniformLocation(program, key);
+      const loc = this.uniformLocation(program, key);
       if (loc === null) continue;
       if (value instanceof Float32Array) {
         if (value.length === 2) gl.uniform2fv(loc, value);

@@ -129,8 +129,7 @@ export class Canvas2DRenderer implements Renderer {
       edgeMask = edgeDetect(posterized, settings.edgeThreshold, settings.edgeStrength);
     }
 
-    const maxEdgeThickness = Math.min(settings.edgeThickness, 2);
-    const result = composite(posterized, edgeMask, settings.lineColour, maxEdgeThickness);
+    const result = composite(posterized, edgeMask, settings.lineColour, settings.edgeThickness);
 
     ctx.putImageData(result, 0, 0);
 
