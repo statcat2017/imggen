@@ -51,7 +51,7 @@ export function PreviewStage() {
     const currentSettings = useFilterStore.getState().settings;
     if (!canvas || !img) return;
     void controllerRef.current.renderPreview(
-      img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current, currentSettings,
+      img.bitmap, canvas, zoomRef.current, panXRef.current, panYRef.current, currentSettings, img.id,
     );
   }, []);
 
