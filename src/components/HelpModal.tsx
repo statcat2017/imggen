@@ -34,6 +34,9 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard Shortcuts"
         className="bg-ctp-mantle border border-ctp-surface1 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6"
         onClick={(e) => e.stopPropagation()}
       >
