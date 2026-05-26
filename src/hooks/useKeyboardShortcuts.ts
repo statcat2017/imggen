@@ -40,9 +40,6 @@ export function useKeyboardShortcuts() {
         case "E":
           useExportStore.getState().requestFocusExport();
           break;
-        case "h":
-        case "H":
-          break;
       }
     }
 

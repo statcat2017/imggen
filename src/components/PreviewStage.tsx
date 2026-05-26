@@ -237,7 +237,7 @@ export function PreviewStage() {
     } else if (source) {
       scheduleRender();
     }
-  }, [mode, source, scheduleRender, drawOriginal]);
+  }, [mode, source, scheduleRender, drawOriginal, renderStatus]);
 
   useEffect(() => {
     if (mode !== "split") return;
