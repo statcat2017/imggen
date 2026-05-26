@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useImageStore } from "@/store/imageStore";
+import { useDisplayStore } from "@/store/displayStore";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useRenderController } from "@/hooks/useRenderController";
 
 const MIN_ZOOM = 0.25;
@@ -25,6 +27,90 @@ function calcFitZoom(
   return Math.min(containerW / imageW, containerH / imageH) * 0.9;
 }
 
+function drawBitmap(
+  ctx: CanvasRenderingContext2D,
+  bitmap: ImageBitmap | HTMLCanvasElement | OffscreenCanvas,
+  w: number,
+  h: number,
+  zoom: number,
+  panX: number,
+  panY: number,
+) {
+  ctx.save();
+  ctx.translate(w / 2 + panX, h / 2 + panY);
+  ctx.scale(zoom, zoom);
+  ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+  ctx.restore();
+}
+
+function drawCheckerboard(ctx: CanvasRenderingContext2D) {
+  const size = 8;
+  const patternCanvas = document.createElement("canvas");
+  patternCanvas.width = size * 2;
+  patternCanvas.height = size * 2;
+  const patternCtx = patternCanvas.getContext("2d");
+  if (!patternCtx) return;
+  patternCtx.fillStyle = "#1e1e2e";
+  patternCtx.fillRect(0, 0, size * 2, size * 2);
+  patternCtx.fillStyle = "#313244";
+  patternCtx.fillRect(0, 0, size, size);
+  patternCtx.fillRect(size, size, size, size);
+  const pattern = ctx.createPattern(patternCanvas, "repeat");
+  if (pattern) {
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  }
+}
+
+function drawSplitView(
+  ctx: CanvasRenderingContext2D,
+  source: ImageBitmap,
+  processed: ImageBitmap | HTMLCanvasElement | OffscreenCanvas,
+  w: number,
+  h: number,
+  zoom: number,
+  panX: number,
+  panY: number,
+  splitRatio: number,
+) {
+  drawCheckerboard(ctx);
+
+  const splitX = Math.round(w * splitRatio);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, splitX, h);
+  ctx.clip();
+  drawBitmap(ctx, source, w, h, zoom, panX, panY);
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(splitX, 0, w - splitX, h);
+  ctx.clip();
+  drawBitmap(ctx, processed, w, h, zoom, panX, panY);
+  ctx.restore();
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(splitX, 0);
+  ctx.lineTo(splitX, h);
+  ctx.stroke();
+
+  const handleSize = 24;
+  const handleY = h / 2;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.roundRect(splitX - handleSize / 2, handleY - handleSize / 2, handleSize, handleSize, 4);
+  ctx.fill();
+  ctx.fillStyle = "#1e1e2e";
+  ctx.font = "14px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("\u2194", splitX, handleY);
+}
+
 export function PreviewStage() {
   const source = useImageStore((s) => s.source);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,15 +127,68 @@ export function PreviewStage() {
   const lastTouchDist = useRef(0);
   const touchStartZoom = useRef(0);
   const touchCenter = useRef({ x: 0, y: 0 });
+  const isDraggingDivider = useRef(false);
+
+  const mode = useDisplayStore((s) => s.tempMode ?? s.mode);
+  const splitPosition = useDisplayStore((s) => s.splitPosition);
+  const setSplitPosition = useDisplayStore((s) => s.setSplitPosition);
 
   const getViewTransform = useCallback(
     () => ({ zoom: zoomRef.current, panX: panXRef.current, panY: panYRef.current }),
     [],
   );
-  const { scheduleRender } = useRenderController(canvasRef, getViewTransform);
+  const { scheduleRender, getCachedBitmap } = useRenderController(canvasRef, getViewTransform);
+  const registerViewActions = useDisplayStore((s) => s.registerViewActions);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+
+  const viewActions = useMemo(() => ({
+    zoomIn: () => {
+      zoomRef.current = clamp(zoomRef.current * 1.25, MIN_ZOOM, MAX_ZOOM);
+      setDisplayZoom(Math.round(zoomRef.current * 100));
+      if (modeRef.current === "original") drawOriginal();
+      else scheduleRender();
+    },
+    zoomOut: () => {
+      zoomRef.current = clamp(zoomRef.current / 1.25, MIN_ZOOM, MAX_ZOOM);
+      setDisplayZoom(Math.round(zoomRef.current * 100));
+      if (modeRef.current === "original") drawOriginal();
+      else scheduleRender();
+    },
+    resetZoom: () => {
+      zoomRef.current = fitZoomRef.current;
+      panXRef.current = 0;
+      panYRef.current = 0;
+      setDisplayZoom(Math.round(fitZoomRef.current * 100));
+      if (modeRef.current === "original") drawOriginal();
+      else scheduleRender();
+      bumpViewVersion();
+    },
+  }), [scheduleRender]);
+
+  useEffect(() => {
+    registerViewActions(viewActions);
+  }, [registerViewActions, viewActions]);
+
+  useKeyboardShortcuts();
 
   const updateDisplayZoom = useCallback(() => {
     setDisplayZoom(Math.round(zoomRef.current * 100));
+  }, []);
+
+  const drawOriginal = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    const currentSource = useImageStore.getState().source;
+    if (!canvas || !ctx || !currentSource) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawCheckerboard(ctx);
+    drawBitmap(ctx, currentSource.bitmap, w, h, zoomRef.current, panXRef.current, panYRef.current);
   }, []);
 
   useEffect(() => {
@@ -80,11 +219,44 @@ export function PreviewStage() {
         );
         fitZoomRef.current = fit;
       }
-      scheduleRender();
+      if (mode === "original") {
+        drawOriginal();
+      } else if (mode === "split") {
+        scheduleRender();
+      } else {
+        scheduleRender();
+      }
     });
     observer.observe(container);
     return () => observer.disconnect();
-  }, [source, scheduleRender]);
+  }, [source, scheduleRender, mode, drawOriginal]);
+
+  useEffect(() => {
+    if (mode === "original" && source) {
+      drawOriginal();
+    } else if (source) {
+      scheduleRender();
+    }
+  }, [mode, source, scheduleRender, drawOriginal]);
+
+  useEffect(() => {
+    if (mode !== "split") return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !source) return;
+
+    const processed = getCachedBitmap();
+    if (!processed) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    drawSplitView(ctx, source.bitmap, processed, w, h, zoomRef.current, panXRef.current, panYRef.current, splitPosition);
+  }, [mode, splitPosition, source, getCachedBitmap, bumpViewVersion]);
 
   useEffect(() => {
     function handleWheel(e: WheelEvent) {
@@ -103,19 +275,26 @@ export function PreviewStage() {
       panXRef.current = (mx - cx) * (1 - ratio) + panXRef.current * ratio;
       panYRef.current = (my - cy) * (1 - ratio) + panYRef.current * ratio;
       zoomRef.current = newZoom;
-      scheduleRender();
       updateDisplayZoom();
+      if (mode === "original") {
+        drawOriginal();
+      } else {
+        scheduleRender();
+      }
     }
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", handleWheel);
-  }, [scheduleRender, updateDisplayZoom]);
+  }, [scheduleRender, updateDisplayZoom, mode, drawOriginal]);
 
   useEffect(() => {
     function handleGlobalMouseUp() {
       if (isDragging.current) {
         isDragging.current = false;
+      }
+      if (isDraggingDivider.current) {
+        isDraggingDivider.current = false;
       }
     }
     window.addEventListener("mouseup", handleGlobalMouseUp);
@@ -123,16 +302,36 @@ export function PreviewStage() {
   }, []);
 
   function handleMouseDown(e: React.MouseEvent) {
+    if (mode === "split") {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const mx = e.clientX - rect.left;
+      const splitX = rect.width * splitPosition;
+      if (Math.abs(mx - splitX) < 20) {
+        isDraggingDivider.current = true;
+        return;
+      }
+    }
     isDragging.current = true;
     dragStart.current = { x: e.clientX, y: e.clientY };
     panStart.current = { x: panXRef.current, y: panYRef.current };
   }
 
   function handleMouseMove(e: React.MouseEvent) {
+    if (isDraggingDivider.current && canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      setSplitPosition(clamp(mx / rect.width, 0.05, 0.95));
+      return;
+    }
     if (!isDragging.current) return;
     panXRef.current = panStart.current.x + (e.clientX - dragStart.current.x);
     panYRef.current = panStart.current.y + (e.clientY - dragStart.current.y);
-    scheduleRender();
+    if (mode === "original") {
+      drawOriginal();
+    } else {
+      scheduleRender();
+    }
   }
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -170,17 +369,26 @@ export function PreviewStage() {
       panXRef.current = (mx - cx) * (1 - zoomRatio) + panXRef.current * zoomRatio;
       panYRef.current = (my - cy) * (1 - zoomRatio) + panYRef.current * zoomRatio;
       zoomRef.current = newZoom;
-      scheduleRender();
       updateDisplayZoom();
+      if (mode === "original") {
+        drawOriginal();
+      } else {
+        scheduleRender();
+      }
     } else if (e.touches.length === 1) {
       panXRef.current = panStart.current.x + (e.touches[0].clientX - dragStart.current.x);
       panYRef.current = panStart.current.y + (e.touches[0].clientY - dragStart.current.y);
-      scheduleRender();
+      if (mode === "original") {
+        drawOriginal();
+      } else {
+        scheduleRender();
+      }
     }
   }
 
   function handleMouseUp() {
     isDragging.current = false;
+    isDraggingDivider.current = false;
     bumpViewVersion();
   }
 
@@ -192,22 +400,34 @@ export function PreviewStage() {
 
   function zoomIn() {
     zoomRef.current = clamp(zoomRef.current * 1.25, MIN_ZOOM, MAX_ZOOM);
-    scheduleRender();
     updateDisplayZoom();
+    if (mode === "original") {
+      drawOriginal();
+    } else {
+      scheduleRender();
+    }
   }
 
   function zoomOut() {
     zoomRef.current = clamp(zoomRef.current / 1.25, MIN_ZOOM, MAX_ZOOM);
-    scheduleRender();
     updateDisplayZoom();
+    if (mode === "original") {
+      drawOriginal();
+    } else {
+      scheduleRender();
+    }
   }
 
   function resetZoom() {
     zoomRef.current = fitZoomRef.current;
     panXRef.current = 0;
     panYRef.current = 0;
-    scheduleRender();
     updateDisplayZoom();
+    if (mode === "original") {
+      drawOriginal();
+    } else {
+      scheduleRender();
+    }
     bumpViewVersion();
   }
 

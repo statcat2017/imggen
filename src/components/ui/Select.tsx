@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-export type SelectOption = { value: string; label: string };
+export type SelectOption = { value: string; label: string; disabled?: boolean };
 
 type SelectProps = {
   label: string;
@@ -25,7 +25,7 @@ export function Select({ label, value, options, onChange }: SelectProps) {
           focus-visible:ring-2 focus-visible:ring-ctp-mauve/50 focus-visible:ring-offset-1 focus-visible:ring-offset-ctp-crust focus-visible:outline-none"
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
+          <option key={opt.value} value={opt.value} disabled={opt.disabled}>
             {opt.label}
           </option>
         ))}
