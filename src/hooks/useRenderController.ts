@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RenderController } from "@/rendering/RenderController";
+import { RenderController, createPreviewRenderer } from "@/rendering";
 import { useFilterStore } from "@/store/filterStore";
 import { useImageStore } from "@/store/imageStore";
 
@@ -11,7 +11,10 @@ export function useRenderController(
 ) {
   const source = useImageStore((s) => s.source);
   const settings = useFilterStore((s) => s.settings);
-  const controllerRef = useRef<RenderController>(new RenderController());
+  const controllerRef = useRef<RenderController | null>(null);
+  if (!controllerRef.current) {
+    controllerRef.current = new RenderController(createPreviewRenderer());
+  }
   const rafIdRef = useRef<number | null>(null);
   const renderTokenRef = useRef(0);
   const [renderStatus, setRenderStatus] = useState<RenderStatus>("idle");
@@ -21,7 +24,7 @@ export function useRenderController(
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
       }
-      controllerRef.current.destroy();
+      controllerRef.current!.destroy();
     };
   }, []);
 
@@ -38,7 +41,7 @@ export function useRenderController(
       if (!canvas || !currentSource || !currentSettings) return;
       const { zoom, panX, panY } = getViewTransform();
       setRenderStatus("rendering");
-      await controllerRef.current.renderPreview(
+      await controllerRef.current!.renderPreview(
         currentSource.bitmap,
         canvas,
         zoom,
