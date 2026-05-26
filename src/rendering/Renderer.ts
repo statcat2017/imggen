@@ -25,7 +25,7 @@ export function resolveExportDimensions(
   resolution: "original" | "preview" | "custom",
   customWidth: number,
   customHeight: number,
-  aspectLock: boolean,
+  _aspectLock: boolean,
 ): { width: number; height: number; capped: boolean } {
   let w: number;
   let h: number;
@@ -44,10 +44,6 @@ export function resolveExportDimensions(
     case "custom":
       w = customWidth;
       h = customHeight;
-      if (aspectLock && sourceWidth > 0 && sourceHeight > 0) {
-        const ratio = sourceWidth / sourceHeight;
-        w = Math.round(h * ratio);
-      }
       break;
   }
 

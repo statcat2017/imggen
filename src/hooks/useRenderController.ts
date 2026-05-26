@@ -1,22 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RenderController, createPreviewRenderer } from "@/rendering";
+import { RenderController, createPreviewRenderer, resolveExportDimensions } from "@/rendering";
 import { useFilterStore } from "@/store/filterStore";
 import { useImageStore } from "@/store/imageStore";
-import { renderExport } from "@/services/exportService";
+import { triggerDownload, encodeBitmapToBlob } from "@/services/exportService";
 import { generateExportFilename } from "@/services/filename";
 import { useExportStore } from "@/store/exportStore";
 import type { ExportSettings } from "@/types";
 
 export type RenderStatus = "idle" | "rendering" | "exporting";
-
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export function useRenderController(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
@@ -87,13 +78,18 @@ export function useRenderController(
       useExportStore.getState().setError(null);
 
       try {
-        const { blob, capped } = await renderExport(
-          controllerRef.current!.getRenderer(),
-          currentSource.bitmap,
-          currentSettings,
-          exportSettings,
+        const { width, height, capped } = resolveExportDimensions(
+          currentSource.width, currentSource.height,
+          exportSettings.resolution, exportSettings.customWidth, exportSettings.customHeight, false,
         );
+
+        const bitmap = await controllerRef.current!.renderExport(
+          currentSource.bitmap, currentSettings, width, height,
+        );
+
+        const blob = await encodeBitmapToBlob(bitmap, exportSettings);
         triggerDownload(blob, generateExportFilename(currentSource.fileName, exportSettings.format));
+
         if (capped) {
           useExportStore.getState().setError("Export capped at 4096px on the longest side");
         }

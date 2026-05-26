@@ -117,6 +117,14 @@ export function FilterControlsPanel() {
   const exportError = useExportStore((s) => s.error);
   const setError = useExportStore((s) => s.setError);
 
+  useEffect(() => {
+    if (source) {
+      const scale = Math.min(1, 1920 / Math.max(source.width, source.height));
+      setCustomWidth(Math.round(source.width * scale));
+      setCustomHeight(Math.round(source.height * scale));
+    }
+  }, [source]);
+
   const dims = useMemo(() => {
     if (!source) return null;
     return resolveExportDimensions(
@@ -383,9 +391,10 @@ export function FilterControlsPanel() {
               )}
               <Toggle label="Aspect Ratio Lock" checked={aspectLock} onChange={setAspectLock} />
               <Toggle label="Sharpen After Resize" checked={sharpen} onChange={setSharpen} />
-              {dims?.capped && (
-                <div className="text-ctp-yellow text-xs">
-                  Export capped at 4096px on the longest side
+              {dims && (
+                <div className="text-ctp-subtext0 text-xs">
+                  Export size: {dims.width} &times; {dims.height}
+                  {dims.capped ? " (capped at 4096px)" : ""}
                 </div>
               )}
               {exportError && (

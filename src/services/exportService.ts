@@ -16,9 +16,8 @@ function sharpenImageData(data: ImageData): ImageData {
       let r = 0, g = 0, b = 0;
       for (let ky = -1; ky <= 1; ky++) {
         for (let kx = -1; kx <= 1; kx++) {
-          const px = x + kx;
-          const py = y + ky;
-          if (px < 0 || px >= w || py < 0 || py >= h) continue;
+          const px = Math.min(w - 1, Math.max(0, x + kx));
+          const py = Math.min(h - 1, Math.max(0, y + ky));
           const i = (py * w + px) * 4;
           const k = kernel[(ky + 1) * 3 + (kx + 1)];
           r += input[i] * k;
@@ -81,13 +80,42 @@ export async function renderExport(
   return { blob, capped };
 }
 
-function triggerDownload(blob: Blob, filename: string): void {
+export function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function encodeBitmapToBlob(
+  bitmap: ImageBitmap,
+  exportSettings: ExportSettings,
+): Promise<Blob> {
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Export: failed to get 2d context");
+
+  if (exportSettings.format === "jpeg") {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(bitmap, 0, 0);
+
+  if (exportSettings.sharpen) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const sharpened = sharpenImageData(imageData);
+    ctx.putImageData(sharpened, 0, 0);
+  }
+
+  bitmap.close();
+
+  const mimeType = exportSettings.format === "jpeg" ? "image/jpeg" : "image/png";
+  return canvas.convertToBlob({
+    type: mimeType,
+    quality: exportSettings.format === "jpeg" ? exportSettings.jpegQuality : undefined,
+  });
 }
 
 export async function exportAndDownload(
