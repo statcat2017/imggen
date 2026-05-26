@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export const TEST_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAKUlEQVQ4y2P4z0A7YKQdY6QdY6QdY6QdY6QdY6QdY6QdY3oBAAD//8NzI1EAAAAASUVORK5CYII=";
 

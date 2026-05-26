@@ -28,38 +28,42 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ctp-crust/60 backdrop-blur-sm"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Keyboard Shortcuts"
-        className="bg-ctp-mantle border border-ctp-surface1 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-ctp-text font-semibold text-lg">Keyboard Shortcuts</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-ctp-subtext0 hover:text-ctp-text cursor-pointer text-xl leading-none"
-            aria-label="Close"
-          >
-            {"\u2715"}
-          </button>
-        </div>
-        <div className="flex flex-col gap-2">
-          {shortcuts.map(({ key, action }) => (
-            <div key={key} className="flex items-center gap-3 text-sm">
-              <kbd className="bg-ctp-surface0 text-ctp-text px-2 py-0.5 rounded font-mono text-xs min-w-[4rem] text-center">
-                {key}
-              </kbd>
-              <span className="text-ctp-subtext1">{action}</span>
-            </div>
-          ))}
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        className="absolute inset-0 bg-ctp-crust/60 backdrop-blur-sm cursor-default border-0 p-0"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keyboard Shortcuts"
+          className="pointer-events-auto bg-ctp-mantle border border-ctp-surface1 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-ctp-text font-semibold text-lg">Keyboard Shortcuts</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-ctp-subtext0 hover:text-ctp-text cursor-pointer text-xl leading-none"
+              aria-label="Close"
+            >
+              {"\u2715"}
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {shortcuts.map(({ key, action }) => (
+              <div key={key} className="flex items-center gap-3 text-sm">
+                <kbd className="bg-ctp-surface0 text-ctp-text px-2 py-0.5 rounded font-mono text-xs min-w-[4rem] text-center">
+                  {key}
+                </kbd>
+                <span className="text-ctp-subtext1">{action}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { runPipeline } from "@/rendering/pipeline";
 import { defaultFilterSettings } from "@/store/filterStore";
-import { allFixtures, pixelDelta } from "@/rendering/__tests__/fixtures";
+import { allFixtures, pixelDelta, computeChecksum, goldenChecksums } from "@/rendering/__tests__/fixtures";
 
-describe("rendering snapshot", () => {
+describe("rendering invariants", () => {
   for (const { name, imageData } of allFixtures) {
     it(`adventure-background preset on ${name} produces correct dimensions`, () => {
       const result = runPipeline(imageData, defaultFilterSettings);
@@ -17,6 +17,12 @@ describe("rendering snapshot", () => {
       const b = runPipeline(imageData, defaultFilterSettings);
       const delta = pixelDelta(a.data, b.data);
       expect(delta).toBe(0);
+    });
+
+    it(`${name} golden checksum matches expected baseline`, () => {
+      const result = runPipeline(imageData, defaultFilterSettings);
+      const hash = computeChecksum(result.data);
+      expect(hash).toBe(goldenChecksums[name]);
     });
   }
 

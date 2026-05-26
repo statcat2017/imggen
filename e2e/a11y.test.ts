@@ -31,11 +31,10 @@ test("controls panel has no critical accessibility violations", async ({ page })
 test("help modal has no critical accessibility violations", async ({ page }) => {
   await page.goto("/");
   const helpButton = page.getByRole("button", { name: "?" });
-  if (await helpButton.isVisible()) {
-    await helpButton.click();
-    await page.waitForTimeout(200);
-    const results = await new AxeBuilder({ page }).analyze();
-    const critical = results.violations.filter((v) => v.impact === "critical");
-    expect(critical).toEqual([]);
-  }
+  await expect(helpButton).toBeVisible();
+  await helpButton.click();
+  await page.waitForTimeout(200);
+  const results = await new AxeBuilder({ page }).analyze();
+  const critical = results.violations.filter((v) => v.impact === "critical");
+  expect(critical).toEqual([]);
 });

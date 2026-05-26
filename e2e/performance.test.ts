@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uploadImage, TEST_PNG } from "./helpers";
+import { uploadImage } from "./helpers";
 
 test("upload to first preview under 5 seconds", async ({ page }) => {
   const start = Date.now();
@@ -17,8 +17,8 @@ test("slider change to render under 2 seconds", async ({ page }) => {
   await panelButton.click();
   await page.waitForTimeout(500);
 
-  const start = Date.now();
   const slider = page.locator("input[type=range]").first();
+  const start = Date.now();
   await slider.fill("0.8");
   await page.waitForTimeout(300);
   const elapsed = Date.now() - start;
@@ -29,7 +29,7 @@ test("export at preview size triggers download under 10 seconds", async ({ page 
   await page.goto("/");
   await uploadImage(page);
 
-  const downloadPromise = page.waitForEvent("download").catch(() => null);
+  const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
   const panelButton = page.getByText("Cell-Shading Controls");
   await panelButton.click();
 
@@ -40,13 +40,8 @@ test("export at preview size triggers download under 10 seconds", async ({ page 
   const exportButton = page.getByRole("button", { name: "Export Image" });
   await exportButton.click();
 
-  const download = await Promise.race([
-    downloadPromise,
-    new Promise<null>((r) => setTimeout(() => r(null), 10000)),
-  ]);
+  const download = await downloadPromise;
   const elapsed = Date.now() - start;
   expect(elapsed).toBeLessThan(10000);
-  if (download) {
-    expect(download.suggestedFilename()).toMatch(/\.(jpg)$/);
-  }
+  expect(download.suggestedFilename()).toMatch(/\.jpg$/);
 });

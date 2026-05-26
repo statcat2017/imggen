@@ -87,3 +87,22 @@ export function pixelDelta(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
   }
   return maxDelta;
 }
+
+export function computeChecksum(data: Uint8ClampedArray): string {
+  let h = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    h = ((h << 5) - h + data[i] * 7 + data[i + 1] * 31 + data[i + 2] * 127 + data[i + 3] * 1) | 0;
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+export const goldenChecksums: Record<string, string> = {
+  highContrast: "42a91672",
+  lowLight: "2cb7c000",
+  landscape: "9d6cc474",
+  portrait: "4336e11f",
+  transparentPng: "76efb2e5",
+  wide: "aae121c8",
+  tall: "0a615000",
+  noisy: "212dac30",
+};

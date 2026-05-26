@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { uploadImage } from "./helpers";
 
-test("export button triggers download", async ({ page }) => {
+test("export button triggers PNG download", async ({ page }) => {
   await page.goto("/");
   await uploadImage(page);
 
@@ -15,14 +15,8 @@ test("export button triggers download", async ({ page }) => {
   const exportButton = page.getByRole("button", { name: "Export Image" });
   await exportButton.click();
 
-  const download = await Promise.race([
-    downloadPromise,
-    new Promise<null>((r) => setTimeout(() => r(null), 5000)),
-  ]);
-
-  if (download) {
-    expect(download.suggestedFilename()).toMatch(/\.(png|jpg)$/);
-  }
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.(png|jpg)$/);
 });
 
 test("E shortcut focuses export panel", async ({ page }) => {
@@ -30,15 +24,17 @@ test("E shortcut focuses export panel", async ({ page }) => {
   await uploadImage(page);
   await page.keyboard.press("e");
   await page.waitForTimeout(200);
+  const exportSection = page.getByText("Export").first();
+  await expect(exportSection).toBeVisible();
 });
 
 test("help modal opens via ? button", async ({ page }) => {
   await page.goto("/");
   const helpButton = page.getByRole("button", { name: "?" });
-  if (await helpButton.isVisible()) {
-    await helpButton.click();
-    await expect(page.getByText("Keyboard Shortcuts")).toBeVisible({ timeout: 2000 });
-    await page.keyboard.press("Escape");
-    await expect(page.getByText("Keyboard Shortcuts")).not.toBeVisible();
-  }
+  await expect(helpButton).toBeVisible();
+  await helpButton.click();
+  const dialog = page.getByRole("dialog", { name: "Keyboard Shortcuts" });
+  await expect(dialog).toBeVisible({ timeout: 2000 });
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
 });
