@@ -11,4 +11,7 @@ export async function uploadImage(page: Page): Promise<void> {
     buffer: Buffer.from(TEST_PNG.split(",")[1], "base64"),
   });
   await expect(page.getByText("test.png")).toBeVisible({ timeout: 5000 });
+  const canvas = page.locator("canvas");
+  await expect(canvas).toBeVisible();
+  expect(await canvas.evaluate((el) => el.clientWidth)).toBeGreaterThan(0);
 }

@@ -20,6 +20,9 @@ test("drag-and-drop upload works", async ({ page }) => {
 
   await page.dispatchEvent("main", "drop", { dataTransfer });
   await expect(page.getByText("drop.png")).toBeVisible({ timeout: 5000 });
+  const canvas = page.locator("canvas");
+  await expect(canvas).toBeVisible();
+  expect(await canvas.evaluate((el) => el.clientWidth)).toBeGreaterThan(0);
 });
 
 test("slider interaction updates render status", async ({ page }) => {
