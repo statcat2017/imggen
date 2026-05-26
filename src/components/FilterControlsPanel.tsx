@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Select } from "@/components/ui/Select";
@@ -9,8 +9,9 @@ import { builtInPresets } from "@/presets/builtInPresets";
 import { useFilterStore, defaultFilterSettings } from "@/store/filterStore";
 import { useExportStore } from "@/store/exportStore";
 import { useImageStore } from "@/store/imageStore";
+import { usePresetStore } from "@/store/presetStore";
 import { resolveExportDimensions, recalcAspectRatio } from "@/rendering";
-import type { FilterSettings, ExportSettings, ExportFormat, ExportResolution } from "@/types";
+import type { FilterSettings, ExportSettings, ExportFormat, ExportResolution, FilterPreset } from "@/types";
 
 type SectionName = "look" | "lines" | "cleanup" | "export";
 
@@ -157,9 +158,88 @@ export function FilterControlsPanel() {
     [aspectLock, source, customWidth],
   );
 
+  const customPresets = usePresetStore((s) => s.custom);
+  const saveCustom = usePresetStore((s) => s.saveCustom);
+  const renameCustom = usePresetStore((s) => s.renameCustom);
+  const deleteCustom = usePresetStore((s) => s.deleteCustom);
+  const exportCustom = usePresetStore((s) => s.exportCustom);
+  const importCustom = usePresetStore((s) => s.importCustom);
+
   const presetOptions: SelectOption[] = [
     ...builtInPresets.map((p) => ({ value: p.id, label: p.name })),
+    ...(customPresets.length > 0 ? [{ value: "", label: "--- Custom ---", disabled: true } as SelectOption] : []),
+    ...customPresets.map((p) => ({ value: p.id, label: p.name })),
   ];
+
+  const [presetNameInput, setPresetNameInput] = useState("");
+  const presetNameRef = useRef<HTMLInputElement>(null);
+
+  const handleSavePreset = useCallback(() => {
+    if (settings.presetId && builtInPresets.find((p) => p.id === settings.presetId)) {
+      const name = `${builtInPresets.find((p) => p.id === settings.presetId)!.name} Custom`;
+      const preset: FilterPreset = {
+        id: crypto.randomUUID(),
+        name,
+        builtIn: false,
+        settings: { ...settings, presetId: null, basePresetId: settings.presetId ?? null },
+      };
+      saveCustom(preset);
+    } else {
+      setPresetNameInput("My Preset");
+      setTimeout(() => presetNameRef.current?.focus(), 0);
+    }
+  }, [settings, saveCustom]);
+
+  const handleConfirmSavePreset = useCallback(() => {
+    const name = presetNameInput.trim() || "My Preset";
+    const preset: FilterPreset = {
+      id: crypto.randomUUID(),
+      name,
+      builtIn: false,
+      settings: { ...settings, presetId: null, basePresetId: settings.basePresetId },
+    };
+    saveCustom(preset);
+    setPresetNameInput("");
+  }, [presetNameInput, settings, saveCustom]);
+
+  const selectedCustomPreset = settings.presetId
+    ? customPresets.find((p) => p.id === settings.presetId)
+    : null;
+
+  const handleExportPresets = useCallback(() => {
+    const json = exportCustom();
+    if (json === "[]") return;
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "imggen-presets.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [exportCustom]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportPresets = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const count = importCustom(reader.result as string);
+        if (count === 0) {
+          useExportStore.getState().setError("No new presets to import (duplicates skipped)");
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    },
+    [importCustom],
+  );
 
   function togglePanel() {
     setPanelCollapsed((prev) => !prev);
@@ -180,9 +260,16 @@ export function FilterControlsPanel() {
   const handlePresetChange = useCallback(
     (value: string) => {
       if (value === "") return;
+      const custom = customPresets.find((p) => p.id === value);
+      if (custom) {
+        useFilterStore.setState({
+          settings: { ...custom.settings, presetId: custom.id, basePresetId: null },
+        });
+        return;
+      }
       applyPreset(value);
     },
-    [applyPreset],
+    [applyPreset, customPresets],
   );
 
   const handleExport = useCallback(async () => {
@@ -243,6 +330,50 @@ export function FilterControlsPanel() {
               <div className="text-ctp-subtext0 text-xs">
                 {getPresetLabel(settings)}
               </div>
+              <div className="flex gap-1 flex-wrap">
+                <Button variant="ghost" size="sm" onClick={handleSavePreset}>
+                  Save as Preset
+                </Button>
+                {selectedCustomPreset && (
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      const name = prompt("Rename preset:", selectedCustomPreset.name);
+                      if (name && name.trim()) renameCustom(selectedCustomPreset.id, name.trim());
+                    }}>
+                      Rename
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      deleteCustom(selectedCustomPreset.id);
+                      useFilterStore.getState().reset();
+                    }}>
+                      Delete
+                    </Button>
+                  </>
+                )}
+                <Button variant="ghost" size="sm" onClick={handleExportPresets}>
+                  Export
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleImportPresets}>
+                  Import
+                </Button>
+              </div>
+              {presetNameInput !== "" && (
+                <div className="flex gap-2 items-center">
+                  <input
+                    ref={presetNameRef}
+                    type="text"
+                    value={presetNameInput}
+                    onChange={(e) => setPresetNameInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleConfirmSavePreset()}
+                    className="bg-ctp-surface0 text-ctp-text border border-ctp-surface1 rounded px-2 py-1 text-xs flex-1 min-w-0"
+                    placeholder="Preset name"
+                  />
+                  <Button variant="primary" size="sm" onClick={handleConfirmSavePreset}>
+                    Save
+                  </Button>
+                </div>
+              )}
+              <input ref={fileInputRef} type="file" hidden accept=".json" onChange={handleFileChange} />
               <Slider
                 label="Colour Levels"
                 value={settings.colourLevels}

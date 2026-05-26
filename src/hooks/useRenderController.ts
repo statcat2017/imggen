@@ -115,5 +115,9 @@ export function useRenderController(
     }
   }, [source, settings, scheduleRender]);
 
-  return { scheduleRender, renderStatus, exportImage };
+  const getCachedBitmap = useCallback(() => {
+    return controllerRef.current?.getCachedBitmap() ?? null;
+  }, []);
+
+  return { scheduleRender, renderStatus, exportImage, getCachedBitmap };
 }

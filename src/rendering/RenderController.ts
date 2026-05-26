@@ -139,6 +139,10 @@ export class RenderController {
     return this.renderer;
   }
 
+  getCachedBitmap(): ImageBitmap | null {
+    return this.cachedBitmap;
+  }
+
   destroy() {
     if (this.cachedBitmap) {
       this.cachedBitmap.close();
