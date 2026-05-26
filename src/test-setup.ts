@@ -13,3 +13,17 @@ const mockStorage: Storage = {
 };
 
 vi.stubGlobal("localStorage", mockStorage);
+
+if (typeof globalThis.ImageData === "undefined") {
+  class FakeImageData {
+    data: Uint8ClampedArray;
+    width: number;
+    height: number;
+    constructor(data: Uint8ClampedArray, width: number, height?: number) {
+      this.data = data;
+      this.width = width;
+      this.height = height ?? data.length / 4 / width;
+    }
+  }
+  vi.stubGlobal("ImageData", FakeImageData);
+}
