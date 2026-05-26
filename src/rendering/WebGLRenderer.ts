@@ -1,4 +1,5 @@
 import type { Renderer, RenderRequest, RenderResult } from "@/rendering/Renderer";
+import { MAX_PREVIEW_DIMENSION } from "@/rendering/Renderer";
 import type { FilterSettings } from "@/types";
 import vertexSrc from "@/rendering/shaders/fullscreen.vert";
 import smoothFrag from "@/rendering/shaders/smooth.frag";
@@ -6,8 +7,6 @@ import colorCorrectFrag from "@/rendering/shaders/colorCorrect.frag";
 import posterizeFrag from "@/rendering/shaders/posterize.frag";
 import edgeDetectFrag from "@/rendering/shaders/edgeDetect.frag";
 import compositeFrag from "@/rendering/shaders/composite.frag";
-
-const MAX_PREVIEW_DIMENSION = 1920;
 
 function compileShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
   const shader = gl.createShader(type);
@@ -185,19 +184,12 @@ export class WebGLRenderer implements Renderer {
   }
 
   async render(request: RenderRequest): Promise<RenderResult> {
-    const { source, sourceId, settings } = request;
-    // Per-source pass caching is not yet implemented — the full GPU pipeline
-    // re-runs on every settings change. Zoom/pan-only frames are still cheap
-    // because RenderController caches the final processed bitmap by source+settings.
+    const { source, sourceId, settings, exportDimensions } = request;
     void sourceId;
 
     try {
-      const scale = Math.min(
-        1,
-        MAX_PREVIEW_DIMENSION / Math.max(source.width, source.height),
-      );
-      const w = Math.round(source.width * scale);
-      const h = Math.round(source.height * scale);
+      const w = exportDimensions ? exportDimensions.width : Math.round(source.width * Math.min(1, MAX_PREVIEW_DIMENSION / Math.max(source.width, source.height)));
+      const h = exportDimensions ? exportDimensions.height : Math.round(source.height * Math.min(1, MAX_PREVIEW_DIMENSION / Math.max(source.width, source.height)));
 
       if (w !== this.targetW || h !== this.targetH) {
         this.resize(w, h);

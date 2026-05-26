@@ -112,11 +112,18 @@ export class RenderController {
     settings: FilterSettings,
     targetWidth: number,
     targetHeight: number,
-  ) {
-    void image;
-    void settings;
-    void targetWidth;
-    void targetHeight;
+  ): Promise<ImageBitmap> {
+    const result = await this.renderer.render({
+      source: image,
+      sourceId: "export",
+      settings,
+      exportDimensions: { width: targetWidth, height: targetHeight },
+    });
+    return result.bitmap;
+  }
+
+  getRenderer() {
+    return this.renderer;
   }
 
   destroy() {
