@@ -137,7 +137,7 @@ export function PreviewStage() {
     () => ({ zoom: zoomRef.current, panX: panXRef.current, panY: panYRef.current }),
     [],
   );
-  const { scheduleRender, getCachedBitmap } = useRenderController(canvasRef, getViewTransform);
+  const { scheduleRender, renderStatus, getCachedBitmap } = useRenderController(canvasRef, getViewTransform);
   const registerViewActions = useDisplayStore((s) => s.registerViewActions);
   const modeRef = useRef(mode);
   modeRef.current = mode;
@@ -256,7 +256,7 @@ export function PreviewStage() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     drawSplitView(ctx, source.bitmap, processed, w, h, zoomRef.current, panXRef.current, panYRef.current, splitPosition);
-  }, [mode, splitPosition, source, getCachedBitmap, bumpViewVersion]);
+  }, [mode, splitPosition, source, getCachedBitmap, renderStatus]);
 
   useEffect(() => {
     function handleWheel(e: WheelEvent) {

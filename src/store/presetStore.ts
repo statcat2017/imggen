@@ -61,7 +61,16 @@ export const usePresetStore = create<PresetStore>((set) => ({
 
   importCustom(json) {
     try {
-      const imported: FilterPreset[] = JSON.parse(json);
+      const parsed: unknown = JSON.parse(json);
+      if (!Array.isArray(parsed)) return 0;
+      const imported: FilterPreset[] = [];
+      for (const item of parsed) {
+        if (!item || typeof item !== "object") continue;
+        if (typeof item.id !== "string" || typeof item.name !== "string") continue;
+        if (!item.settings || typeof item.settings !== "object") continue;
+        if (typeof item.settings.colourLevels !== "number") continue;
+        imported.push(item as FilterPreset);
+      }
       const existingIds = new Set(loadCustomPresets().map((p) => p.id));
       const newPresets = imported.filter((p) => !existingIds.has(p.id));
       const merged = [...loadCustomPresets(), ...newPresets];

@@ -8,7 +8,6 @@ const shortcuts = [
   { key: "\u2212", action: "Zoom out" },
   { key: "0", action: "Reset zoom" },
   { key: "E", action: "Focus export panel" },
-  { key: "H", action: "Hide/show control panel" },
 ];
 
 type HelpModalProps = {

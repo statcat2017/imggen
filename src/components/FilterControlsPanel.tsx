@@ -260,9 +260,16 @@ export function FilterControlsPanel() {
   const handlePresetChange = useCallback(
     (value: string) => {
       if (value === "") return;
+      const custom = customPresets.find((p) => p.id === value);
+      if (custom) {
+        useFilterStore.setState({
+          settings: { ...custom.settings, presetId: custom.id, basePresetId: null },
+        });
+        return;
+      }
       applyPreset(value);
     },
-    [applyPreset],
+    [applyPreset, customPresets],
   );
 
   const handleExport = useCallback(async () => {
