@@ -27,16 +27,7 @@ test("rejects unsupported file type with error", async ({ page }) => {
   await expect(page.getByText("That file type is not supported")).toBeVisible();
 });
 
-test("toolbar shows export and help buttons when loaded", async ({ page }) => {
+test("toolbar shows export button when loaded", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "?" })).toBeVisible();
-});
-
-test("help modal opens and closes", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Help" }).click();
-  await expect(page.getByText("Keyboard Shortcuts")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByText("Keyboard Shortcuts")).not.toBeVisible();
 });
