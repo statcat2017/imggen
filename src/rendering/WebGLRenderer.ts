@@ -157,14 +157,18 @@ export class WebGLRenderer implements Renderer {
     gl.bindVertexArray(this.vao);
 
     const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-    this.positionBuf = gl.createBuffer()!;
+    const positionBuf = gl.createBuffer();
+    if (!positionBuf) throw new Error("Failed to create position buffer");
+    this.positionBuf = positionBuf;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuf);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
     const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
-    this.texCoordBuf = gl.createBuffer()!;
+    const texCoordBuf = gl.createBuffer();
+    if (!texCoordBuf) throw new Error("Failed to create texcoord buffer");
+    this.texCoordBuf = texCoordBuf;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuf);
     gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(1);
