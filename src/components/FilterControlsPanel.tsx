@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Select } from "@/components/ui/Select";
@@ -7,7 +7,10 @@ import { Slider } from "@/components/ui/Slider";
 import { Toggle } from "@/components/ui/Toggle";
 import { builtInPresets } from "@/presets/builtInPresets";
 import { useFilterStore, defaultFilterSettings } from "@/store/filterStore";
-import type { FilterSettings } from "@/types";
+import { useExportStore } from "@/store/exportStore";
+import { useImageStore } from "@/store/imageStore";
+import { resolveExportDimensions, recalcAspectRatio } from "@/rendering";
+import type { FilterSettings, ExportSettings, ExportFormat, ExportResolution } from "@/types";
 
 type SectionName = "look" | "lines" | "cleanup" | "export";
 
@@ -41,12 +44,12 @@ function getPresetDefault<K extends keyof FilterSettings>(
   return defaultFilterSettings[key];
 }
 
-const formatOptions = [
+const formatOptions: SelectOption[] = [
   { value: "png", label: "PNG" },
   { value: "jpeg", label: "JPEG" },
 ];
 
-const resolutionOptions = [
+const resolutionOptions: SelectOption[] = [
   { value: "original", label: "Original" },
   { value: "preview", label: "Preview" },
   { value: "custom", label: "Custom" },
@@ -80,13 +83,79 @@ function SectionHeader({
 export function FilterControlsPanel() {
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [sectionCollapsed, setSectionCollapsed] = useState<Set<SectionName>>(new Set());
-  const [format, setFormat] = useState("png");
-  const [resolution, setResolution] = useState("original");
+  const setOnFocusExport = useExportStore((s) => s.setOnFocusExport);
+
+  const focusExport = useCallback(() => {
+    setPanelCollapsed(false);
+    setSectionCollapsed((prev) => {
+      const next = new Set(prev);
+      next.delete("export");
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    setOnFocusExport(focusExport);
+    return () => setOnFocusExport(null);
+  }, [focusExport, setOnFocusExport]);
+
+  const [format, setFormat] = useState<ExportFormat>("png");
+  const [resolution, setResolution] = useState<ExportResolution>("original");
+  const [jpegQuality, setJpegQuality] = useState(0.92);
+  const [customWidth, setCustomWidth] = useState(1920);
+  const [customHeight, setCustomHeight] = useState(1080);
+  const [aspectLock, setAspectLock] = useState(true);
+  const [sharpen, setSharpen] = useState(false);
 
   const settings = useFilterStore((s) => s.settings);
   const update = useFilterStore((s) => s.update);
   const applyPreset = useFilterStore((s) => s.applyPreset);
   const reset = useFilterStore((s) => s.reset);
+  const source = useImageStore((s) => s.source);
+  const exportImage = useExportStore((s) => s.exportImage);
+  const exportStatus = useExportStore((s) => s.status);
+  const exportError = useExportStore((s) => s.error);
+  const setError = useExportStore((s) => s.setError);
+
+  useEffect(() => {
+    if (source) {
+      const scale = Math.min(1, 1920 / Math.max(source.width, source.height));
+      setCustomWidth(Math.round(source.width * scale));
+      setCustomHeight(Math.round(source.height * scale));
+    }
+  }, [source]);
+
+  const dims = useMemo(() => {
+    if (!source) return null;
+    return resolveExportDimensions(
+      source.width,
+      source.height,
+      resolution,
+      customWidth,
+      customHeight,
+      aspectLock,
+    );
+  }, [source, resolution, customWidth, customHeight, aspectLock]);
+
+  const handleWidthChange = useCallback(
+    (v: number) => {
+      setCustomWidth(v);
+      if (aspectLock && source) {
+        setCustomHeight(recalcAspectRatio("width", v, customHeight, source.width, source.height));
+      }
+    },
+    [aspectLock, source, customHeight],
+  );
+
+  const handleHeightChange = useCallback(
+    (v: number) => {
+      setCustomHeight(v);
+      if (aspectLock && source) {
+        setCustomWidth(recalcAspectRatio("height", v, customWidth, source.width, source.height));
+      }
+    },
+    [aspectLock, source, customWidth],
+  );
 
   const presetOptions: SelectOption[] = [
     ...builtInPresets.map((p) => ({ value: p.id, label: p.name })),
@@ -115,6 +184,23 @@ export function FilterControlsPanel() {
     },
     [applyPreset],
   );
+
+  const handleExport = useCallback(async () => {
+    if (!exportImage) return;
+    setError(null);
+    const exportSettings: ExportSettings = {
+      format,
+      jpegQuality,
+      resolution,
+      customWidth,
+      customHeight,
+      aspectLock,
+      sharpen,
+    };
+    await exportImage(exportSettings);
+  }, [exportImage, format, jpegQuality, resolution, customWidth, customHeight, aspectLock, sharpen, setError]);
+
+  const isExporting = exportStatus === "exporting";
 
   return (
     <div
@@ -281,19 +367,45 @@ export function FilterControlsPanel() {
           />
           {!sectionCollapsed.has("export") && (
             <div className="flex flex-col gap-2 px-4 pb-3">
-              <Select label="Format" value={format} options={formatOptions} onChange={setFormat} />
-              <Select
-                label="Resolution"
-                value={resolution}
-                options={resolutionOptions}
-                onChange={setResolution}
-              />
+              <Select label="Format" value={format} options={formatOptions} onChange={(v) => setFormat(v as ExportFormat)} />
+              {format === "jpeg" && (
+                <Slider
+                  label="JPEG Quality"
+                  value={jpegQuality}
+                  min={0.1}
+                  max={1}
+                  step={0.01}
+                  onChange={setJpegQuality}
+                />
+              )}
+              <Select label="Resolution" value={resolution} options={resolutionOptions} onChange={(v) => setResolution(v as ExportResolution)} />
+              {resolution === "custom" && (
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Slider label="Width" value={customWidth} min={1} max={4096} step={1} onChange={handleWidthChange} />
+                  </div>
+                  <div className="flex-1">
+                    <Slider label="Height" value={customHeight} min={1} max={4096} step={1} onChange={handleHeightChange} />
+                  </div>
+                </div>
+              )}
+              <Toggle label="Aspect Ratio Lock" checked={aspectLock} onChange={setAspectLock} />
+              <Toggle label="Sharpen After Resize" checked={sharpen} onChange={setSharpen} />
+              {dims && (
+                <div className="text-ctp-subtext0 text-xs">
+                  Export size: {dims.width} &times; {dims.height}
+                  {dims.capped ? " (capped at 4096px)" : ""}
+                </div>
+              )}
+              {exportError && (
+                <div className="text-ctp-red text-xs">{exportError}</div>
+              )}
               <div className="flex gap-2">
                 <Button variant="secondary" size="md" onClick={reset}>
                   Reset
                 </Button>
-                <Button variant="primary" size="md" onClick={() => {}}>
-                  Export Image
+                <Button variant="primary" size="md" onClick={handleExport} disabled={isExporting || !exportImage}>
+                  {isExporting ? "Exporting\u2026" : "Export Image"}
                 </Button>
               </div>
             </div>

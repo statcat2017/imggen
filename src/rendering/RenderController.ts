@@ -1,5 +1,5 @@
 import type { FilterSettings } from "@/types";
-import type { Renderer } from "@/rendering/Renderer";
+import type { RenderRequest, Renderer } from "@/rendering/Renderer";
 import { Canvas2DRenderer } from "@/rendering/Canvas2DRenderer";
 
 let globalRenderId = 0;
@@ -112,11 +112,31 @@ export class RenderController {
     settings: FilterSettings,
     targetWidth: number,
     targetHeight: number,
-  ) {
-    void image;
-    void settings;
-    void targetWidth;
-    void targetHeight;
+  ): Promise<ImageBitmap> {
+    const request: RenderRequest = {
+      source: image,
+      sourceId: "export",
+      settings,
+      exportDimensions: { width: targetWidth, height: targetHeight },
+    };
+    try {
+      const result = await this.renderer.render(request);
+      return result.bitmap;
+    } catch (err) {
+      if (!this.fellBack) {
+        console.warn("[RenderController] export renderer failed, falling back to Canvas2D:", err);
+        this.renderer.destroy();
+        this.renderer = new Canvas2DRenderer();
+        this.fellBack = true;
+        const result = await this.renderer.render(request);
+        return result.bitmap;
+      }
+      throw err;
+    }
+  }
+
+  getRenderer() {
+    return this.renderer;
   }
 
   destroy() {
